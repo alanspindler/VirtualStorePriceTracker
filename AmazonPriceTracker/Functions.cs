@@ -370,6 +370,8 @@ namespace Functions
 
         public static async Task FillEmptyProductNames()
         {
+            using var dbcontext = new AppDbContext();
+            var productRepository = new ProductRepository(dbcontext);
             var playwright = await Playwright.CreateAsync();
             var browser = await playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions { Headless = true });
             var context = await browser.NewContextAsync(new BrowserNewContextOptions
@@ -383,9 +385,9 @@ namespace Functions
                 var url = request.Url;
 
                 if (url.EndsWith(".png") || url.EndsWith(".jpg") || url.EndsWith(".jpeg") || url.EndsWith(".gif") ||
-                    url.EndsWith(".js") || url.EndsWith(".css") || url.EndsWith(".woff") || url.EndsWith(".woff2") ||
-                    url.EndsWith(".ttf") || url.EndsWith(".eot") || url.EndsWith(".mp4") || url.EndsWith(".webm") ||
-                    url.EndsWith(".ogg"))
+    url.EndsWith(".js") || url.EndsWith(".css") || url.EndsWith(".woff") || url.EndsWith(".woff2") ||
+    url.EndsWith(".ttf") || url.EndsWith(".eot") || url.EndsWith(".mp4") || url.EndsWith(".webm") ||
+    url.EndsWith(".ogg"))
                 {
                     await route.AbortAsync();
                     return;
@@ -394,8 +396,6 @@ namespace Functions
                 await route.ContinueAsync();
             });
 
-            using var dbcontext = new AppDbContext();
-            var productRepository = new ProductRepository(dbcontext);
             var groupedProducts = productRepository.GetProductsGroupedByStoreIdWithNullNames();
 
             var tasks = new List<Task>();
@@ -403,11 +403,8 @@ namespace Functions
             foreach (var storeGroup in groupedProducts)
             {
                 var storeGroupLocal = storeGroup;
-
                 var task = Task.Run(async () =>
                 {
-                    using var dbcontext = new AppDbContext();
-                    var productRepository = new ProductRepository(dbcontext);
                     var page = await context.NewPageAsync();
 
                     try
@@ -450,8 +447,6 @@ namespace Functions
             await browser.DisposeAsync();
         }
 
-
-
         public static async Task UpdateProductPrices()
         {
             var playwright = await Playwright.CreateAsync();
@@ -475,8 +470,6 @@ namespace Functions
                     await route.AbortAsync();
                     return;
                 }
-
-
                 await route.ContinueAsync();
             });
 

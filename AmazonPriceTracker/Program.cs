@@ -1,4 +1,6 @@
-﻿class VirtualStoresPriceTracker : Functions.Functions
+﻿using Microsoft.Identity.Client;
+
+class VirtualStoresPriceTracker : Functions.Functions
 {
     public static async Task Main()
     {
@@ -12,7 +14,6 @@
                 var updatePriceTask = UpdateProductPrices();
                 var notifyUsersTask = CheckAndNotifyUsersAsync();
                 await Task.WhenAll(fillTask, updatePriceTask, notifyUsersTask);
-
                 UpdateExecutionLogSuccess(IdLogExecution);
             }
 
