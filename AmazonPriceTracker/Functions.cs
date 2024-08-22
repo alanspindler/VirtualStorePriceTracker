@@ -461,7 +461,6 @@ namespace Functions
                 var request = route.Request;
                 var url = request.Url;
 
-
                 if (url.EndsWith(".png") || url.EndsWith(".jpg") || url.EndsWith(".jpeg") || url.EndsWith(".gif") ||
                     url.EndsWith(".js") || url.EndsWith(".css") || url.EndsWith(".woff") || url.EndsWith(".woff2") ||
                     url.EndsWith(".ttf") || url.EndsWith(".eot") || url.EndsWith(".mp4") || url.EndsWith(".webm") ||
@@ -475,12 +474,25 @@ namespace Functions
 
             using var dbcontext = new AppDbContext();
             var productRepository = new ProductRepository(dbcontext);
-            var groupedProducts = productRepository.GetProductsGroupedByStoreIdPendingPriceUpdate();
+            var products = productRepository.GetProductsGroupedByStoreIdPendingPriceUpdate()
+                                            .SelectMany(g => g.Value)
+                                            .OrderBy(p => p.Last_Checked_Date)
+                                            .Take(200)
+                                            .ToList();
+
+            int totalProducts = products.Count;
+            int threads = 4;
+            int productsPerThread = totalProducts / threads;
+            int remainder = totalProducts % threads;
+
             var tasks = new List<Task>();
 
-            foreach (var storeGroup in groupedProducts)
+            for (int i = 0; i < threads; i++)
             {
-                var storeGroupLocal = storeGroup;
+                int start = i * productsPerThread;
+                int count = productsPerThread + (i == threads - 1 ? remainder : 0); // A última thread pega o restante
+
+                var productsSubset = products.Skip(start).Take(count).ToList();
 
                 var task = Task.Run(async () =>
                 {
@@ -490,21 +502,19 @@ namespace Functions
 
                     try
                     {
-                        foreach (var product in storeGroupLocal.Value)
+                        foreach (var product in productsSubset)
                         {
-                            string Url = product.Url;
-                            await page.GotoAsync(Url);
+                            string url = product.Url;
+                            await page.GotoAsync(url);
                             Store store = (Store)product.Store_Id;
-                            double? Price = await GetProductPrice(page, Url, store);
-                            bool Unavaliable = false;
-                            if (Price is null)
+                            double? price = await GetProductPrice(page, url, store);
+                            bool unavailable = price == null;
+
+                            productRepository.AlterProduct(product.Id, product.Name, product.Url, product.Store_Id, price, unavailable, DateTime.Now);
+
+                            if (price != null)
                             {
-                                Unavaliable = true;
-                            }
-                            productRepository.AlterProduct(product.Id, product.Name, product.Url, product.Store_Id, Price, Unavaliable, DateTime.Now);
-                            if (Price != null)
-                            {
-                                string logMessage = $"O Produto de ID {product.Id} foi atualizado com o preço {Price}";
+                                string logMessage = $"O Produto de ID {product.Id} foi atualizado com o preço {price}";
                                 await AddLogEntryAsync(LogType.ProductPriceUpdate, logMessage);
                             }
                         }
@@ -523,7 +533,6 @@ namespace Functions
             await browser.CloseAsync();
             await browser.DisposeAsync();
         }
-
 
         public static async Task CheckAndNotifyUsersAsync()
         {

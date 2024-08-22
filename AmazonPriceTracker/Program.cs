@@ -22,7 +22,7 @@ class VirtualStoresPriceTracker : Functions.Functions
                 UpdateExecutionLogError(IdLogExecution, ex.ToString());
             }
 
-            await Task.Delay(TimeSpan.FromMinutes(10));
+            await Task.Delay(TimeSpan.FromMinutes(1));
         }
     }
 }
