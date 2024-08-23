@@ -7,8 +7,8 @@
         {
             try
             {
-                CloseChromiumAndNodeProcesses();
                 IdLogExecution = InsertExecutionLogStart();
+                CloseChromiumAndNodeProcesses();
                 var fillTask = FillEmptyProductNames();
                 var updatePriceTask = UpdateProductPrices();
                 var notifyUsersTask = CheckAndNotifyUsersAsync();

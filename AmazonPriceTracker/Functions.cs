@@ -23,7 +23,8 @@ namespace Functions
             Magazine_Luiza = 6,
             Terabyte_Shop = 7,
             Nuuvem = 8,
-            GreenManGaming = 9
+            GreenManGaming = 9,
+            GOG = 10
         }
 
         public enum LogType
@@ -105,6 +106,12 @@ namespace Functions
                 return price;
             }
 
+            else if (store == Store.GOG)
+            {
+                price = await GetPriceGOG(page, url);
+                return price;
+            }
+
             return null;
         }
 
@@ -177,6 +184,12 @@ namespace Functions
                     textProductName = await page.Locator(LabelGreenManGamingProductName).TextContentAsync();
                     return textProductName;
                 }
+            }
+
+            else if (store == Store.GOG)
+            {
+                textProductName = await page.Locator(LabelGOGProductName).TextContentAsync();
+                return textProductName;
             }
 
             return null;
@@ -362,6 +375,28 @@ namespace Functions
             if (priceElement != null)
             {
                 priceElement = priceElement.Replace("R$", "").Replace(",", "").Trim();
+
+                if (double.TryParse(priceElement, out double price))
+                {
+                    price = price / 100;
+                    return price;
+                }
+            }
+            return null;
+        }
+
+        public static async Task<double?> GetPriceGOG(IPage page, string url)
+        {
+            string? priceElement = null;
+            int elements = await page.Locator(LabelGOGPrice).CountAsync();
+            if (elements > 0)
+            {
+                priceElement = await page.Locator(LabelGOGPrice).TextContentAsync();
+            }
+
+            if (priceElement != null)
+            {
+                priceElement = priceElement.Replace("R$", "").Trim();
 
                 if (double.TryParse(priceElement, out double price))
                 {

@@ -31,5 +31,8 @@ namespace PageObjects
 
         public static string LabelGreenManGamingProductName = "[ng-bind=\"product.name\"]";
         public static string LabelGreenManGamingPrice = "[class='current-price pdp-price']";
+
+        public static string LabelGOGProductName = "[selenium-id=\"ProductTitle\"]";
+        public static string LabelGOGPrice = "[selenium-id=\"ProductFinalPrice\"]";
     }
 }
