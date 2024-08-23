@@ -24,5 +24,9 @@ namespace PageObjects
 
         public static string LabelTerabyteProductName = "[class=tit-prod]";
         public static string LabelTerabytePrice = "[id=valVista] >> nth = 0";
+
+        public static string LabelNuuvemProductName = "[class=product-title] >> nth = 0";
+        public static string LabelNuuvemPriceInteger = "[class=integer] >> nth = 0";
+        public static string LabelNuuvemPriceDecimal = "[class=decimal] >> nth = 0";
     }
 }

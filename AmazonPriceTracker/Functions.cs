@@ -20,7 +20,8 @@ namespace Functions
             Steam = 4,
             Pichau = 5,
             Magazine_Luiza = 6,
-            Terabyte_Shop = 7
+            Terabyte_Shop = 7,
+            Nuuvem = 8
         }
 
         public enum LogType
@@ -90,6 +91,12 @@ namespace Functions
                 return price;
             }
 
+            else if (store == Store.Nuuvem)
+            {
+                price = await GetPriceNuuvem(page, url);
+                return price;
+            }
+
             return null;
         }
 
@@ -143,6 +150,12 @@ namespace Functions
             else if (store == Store.Terabyte_Shop)
             {
                 textProductName = await page.Locator(LabelTerabyteProductName).TextContentAsync();
+                return textProductName;
+            }
+
+            else if (store == Store.Nuuvem)
+            {
+                textProductName = await page.Locator(LabelNuuvemProductName).TextContentAsync();
                 return textProductName;
             }
 
@@ -273,6 +286,35 @@ namespace Functions
             if (priceElement != null)
             {
                 priceElement = priceElement.Replace("R$", "").Trim();
+
+                if (double.TryParse(priceElement, out double price))
+                {
+                    if (price == 0)
+                    {
+                        return null;
+                    }
+                    return price;
+                }
+            }
+            return null;
+        }
+
+        public static async Task<double?> GetPriceNuuvem(IPage page, string url)
+        {
+            string? priceElement = null;
+            string? priceElementInteiro = null;
+            string? priceElementDecimal = null;
+            int elementos = await page.Locator(LabelNuuvemPriceInteger).CountAsync();
+            if (elementos > 0)
+            {
+                priceElementInteiro = await page.Locator(LabelNuuvemPriceInteger).TextContentAsync();
+                priceElementDecimal = await page.Locator(LabelNuuvemPriceDecimal).TextContentAsync();
+                priceElement = priceElementInteiro + "." +  priceElementDecimal;
+            }
+
+            if (priceElement != null)
+            {
+                //priceElement = priceElement.Replace(",", ".").Trim();
 
                 if (double.TryParse(priceElement, out double price))
                 {
