@@ -6,6 +6,8 @@ using File = System.IO.File;
 using System.Text.RegularExpressions;
 using Database;
 
+using System.Diagnostics;
+
 namespace Functions
 {
     public class Functions : PageObjects.PageObjects
@@ -18,7 +20,8 @@ namespace Functions
             Steam = 4,
             Pichau = 5,
             Magazine_Luiza = 6,
-            Terabyte_Shop = 7
+            Terabyte_Shop = 7,
+            Nuuvem = 8
         }
 
         public enum LogType
@@ -88,6 +91,12 @@ namespace Functions
                 return price;
             }
 
+            else if (store == Store.Nuuvem)
+            {
+                price = await GetPriceNuuvem(page, url);
+                return price;
+            }
+
             return null;
         }
 
@@ -141,6 +150,12 @@ namespace Functions
             else if (store == Store.Terabyte_Shop)
             {
                 textProductName = await page.Locator(LabelTerabyteProductName).TextContentAsync();
+                return textProductName;
+            }
+
+            else if (store == Store.Nuuvem)
+            {
+                textProductName = await page.Locator(LabelNuuvemProductName).TextContentAsync();
                 return textProductName;
             }
 
@@ -284,6 +299,35 @@ namespace Functions
             return null;
         }
 
+        public static async Task<double?> GetPriceNuuvem(IPage page, string url)
+        {
+            string? priceElement = null;
+            string? priceElementInteiro = null;
+            string? priceElementDecimal = null;
+            int elementos = await page.Locator(LabelNuuvemPriceInteger).CountAsync();
+            if (elementos > 0)
+            {
+                priceElementInteiro = await page.Locator(LabelNuuvemPriceInteger).TextContentAsync();
+                priceElementDecimal = await page.Locator(LabelNuuvemPriceDecimal).TextContentAsync();
+                priceElement = priceElementInteiro + "." +  priceElementDecimal;
+            }
+
+            if (priceElement != null)
+            {
+                //priceElement = priceElement.Replace(",", ".").Trim();
+
+                if (double.TryParse(priceElement, out double price))
+                {
+                    if (price == 0)
+                    {
+                        return null;
+                    }
+                    return price;
+                }
+            }
+            return null;
+        }
+
         public static int? returnSteamIdapp(string url)
         {
             int? idApp = null;
@@ -307,12 +351,12 @@ namespace Functions
             if (credentials == null)
             {
                 Log("Falha ao deserializar as credenciais.");
-                return (string.Empty, string.Empty); // retorna um valor padrão
+                return (string.Empty, string.Empty);
             }
             if (!credentials.ContainsKey("email") || !credentials.ContainsKey("password"))
             {
                 Log("Faltando 'email' ou 'password' nas credenciais.");
-                return (string.Empty, string.Empty); // retorna um valor padrão
+                return (string.Empty, string.Empty);
             }
             return (credentials["email"], credentials["password"]);
         }
@@ -377,156 +421,158 @@ namespace Functions
             {
                 UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.4692.99 Safari/537.36"
             });
+
             await context.RouteAsync("**/*", async route =>
             {
                 var request = route.Request;
                 var url = request.Url;
 
-                // Bloqueia imagens
-                if (url.EndsWith(".png") || url.EndsWith(".jpg") || url.EndsWith(".jpeg") || url.EndsWith(".gif"))
+                if (url.EndsWith(".png") || url.EndsWith(".jpg") || url.EndsWith(".jpeg") || url.EndsWith(".gif") ||
+    url.EndsWith(".js") || url.EndsWith(".css") || url.EndsWith(".woff") || url.EndsWith(".woff2") ||
+    url.EndsWith(".ttf") || url.EndsWith(".eot") || url.EndsWith(".mp4") || url.EndsWith(".webm") ||
+    url.EndsWith(".ogg"))
                 {
                     await route.AbortAsync();
                     return;
                 }
 
-                // Bloqueia arquivos JavaScript
-                if (url.EndsWith(".js"))
-                {
-                    await route.AbortAsync();
-                    return;
-                }
-
-                // Bloqueia arquivos CSS
-                if (url.EndsWith(".css"))
-                {
-                    await route.AbortAsync();
-                    return;
-                }
-
-                // Bloqueia fontes
-                if (url.EndsWith(".woff") || url.EndsWith(".woff2") || url.EndsWith(".ttf") || url.EndsWith(".eot"))
-                {
-                    await route.AbortAsync();
-                    return;
-                }
-
-                // Bloqueia vídeos
-                if (url.EndsWith(".mp4") || url.EndsWith(".webm") || url.EndsWith(".ogg"))
-                {
-                    await route.AbortAsync();
-                    return;
-                }
-
-                // Permite o carregamento dos outros recursos
                 await route.ContinueAsync();
             });
-            var page = await context.NewPageAsync();
+
             var groupedProducts = productRepository.GetProductsGroupedByStoreIdWithNullNames();
+
+            var tasks = new List<Task>();
+
             foreach (var storeGroup in groupedProducts)
             {
-                foreach (var product in storeGroup.Value)
+                var storeGroupLocal = storeGroup;
+                var task = Task.Run(async () =>
                 {
-                    string Url = product.Url;
-                    await page.GotoAsync(Url);
-                    Store store = (Store)product.Store_Id;
-                    string Name = await GetProductName(page, Url, store);
-                    bool Unavaliable = false;
-                    if (Name != null)
+                    var page = await context.NewPageAsync();
+
+                    try
                     {
-                        Name = Name.Trim();
+                        foreach (var product in storeGroupLocal.Value)
+                        {
+                            string Url = product.Url;
+                            await page.GotoAsync(Url);
+                            Store store = (Store)product.Store_Id;
+                            string Name = await GetProductName(page, Url, store);
+                            bool Unavaliable = false;
+                            if (Name != null)
+                            {
+                                Name = Name.Trim();
+                            }
+                            if (Name is null)
+                            {
+                                Unavaliable = true;
+                            }
+                            productRepository.AlterProduct(product.Id, Name, product.Url, product.Store_Id, product.Current_Price, Unavaliable, DateTime.Now);
+                            if (product.Name != null)
+                            {
+                                string logMessage = $"O Produto de ID {product.Id} foi atualizado com o nome {product.Name}";
+                                await AddLogEntryAsync(LogType.ProductNameUpdate, logMessage);
+                            }
+                        }
                     }
-                    if (Name is null)
+                    finally
                     {
-                        Unavaliable = true;
+                        await page.CloseAsync();
                     }
-                    productRepository.AlterProduct(product.Id, Name, product.Url, product.Store_Id, product.Current_Price, Unavaliable, DateTime.Now);
-                    if (product.Name != null)
-                    {
-                        string logMessage = $"O Produto de ID {product.Id} foi atualizado com o nome {product.Name}";
-                        await AddLogEntryAsync(LogType.ProductNameUpdate, logMessage);
-                    }
-                }
+                });
+
+                tasks.Add(task);
             }
+
+            await Task.WhenAll(tasks);
+
             await browser.CloseAsync();
             await browser.DisposeAsync();
         }
 
-        public static async Task UpdateProductPrice()
+        public static async Task UpdateProductPrices()
         {
-            using var dbcontext = new AppDbContext();
-            var productRepository = new ProductRepository(dbcontext);
             var playwright = await Playwright.CreateAsync();
             var browser = await playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions { Headless = true });
             var context = await browser.NewContextAsync(new BrowserNewContextOptions
             {
                 UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.4692.99 Safari/537.36"
             });
+
             await context.RouteAsync("**/*", async route =>
             {
                 var request = route.Request;
                 var url = request.Url;
 
-                // Bloqueia imagens
-                if (url.EndsWith(".png") || url.EndsWith(".jpg") || url.EndsWith(".jpeg") || url.EndsWith(".gif"))
+                if (url.EndsWith(".png") || url.EndsWith(".jpg") || url.EndsWith(".jpeg") || url.EndsWith(".gif") ||
+                    url.EndsWith(".js") || url.EndsWith(".css") || url.EndsWith(".woff") || url.EndsWith(".woff2") ||
+                    url.EndsWith(".ttf") || url.EndsWith(".eot") || url.EndsWith(".mp4") || url.EndsWith(".webm") ||
+                    url.EndsWith(".ogg"))
                 {
                     await route.AbortAsync();
                     return;
                 }
-
-                // Bloqueia arquivos JavaScript
-                if (url.EndsWith(".js"))
-                {
-                    await route.AbortAsync();
-                    return;
-                }
-
-                // Bloqueia arquivos CSS
-                if (url.EndsWith(".css"))
-                {
-                    await route.AbortAsync();
-                    return;
-                }
-
-                // Bloqueia fontes
-                if (url.EndsWith(".woff") || url.EndsWith(".woff2") || url.EndsWith(".ttf") || url.EndsWith(".eot"))
-                {
-                    await route.AbortAsync();
-                    return;
-                }
-
-                // Bloqueia vídeos
-                if (url.EndsWith(".mp4") || url.EndsWith(".webm") || url.EndsWith(".ogg"))
-                {
-                    await route.AbortAsync();
-                    return;
-                }
-
-                // Permite o carregamento dos outros recursos
                 await route.ContinueAsync();
             });
-            var page = await context.NewPageAsync();
-            var groupedProducts = productRepository.GetProductsGroupedByStoreIdPendingPriceUpdate();
-            foreach (var storeGroup in groupedProducts)
+
+            using var dbcontext = new AppDbContext();
+            var productRepository = new ProductRepository(dbcontext);
+            var products = productRepository.GetProductsGroupedByStoreIdPendingPriceUpdate()
+                                            .SelectMany(g => g.Value)
+                                            .OrderBy(p => p.Last_Checked_Date)
+                                            .Take(200)
+                                            .ToList();
+
+            int totalProducts = products.Count;
+            int threads = 4;
+            int productsPerThread = totalProducts / threads;
+            int remainder = totalProducts % threads;
+
+            var tasks = new List<Task>();
+
+            for (int i = 0; i < threads; i++)
             {
-                foreach (var product in storeGroup.Value)
+                int start = i * productsPerThread;
+                int count = productsPerThread + (i == threads - 1 ? remainder : 0); // A última thread pega o restante
+
+                var productsSubset = products.Skip(start).Take(count).ToList();
+
+                var task = Task.Run(async () =>
                 {
-                    string Url = product.Url;
-                    await page.GotoAsync(Url);
-                    Store store = (Store)product.Store_Id;
-                    double? Price = await GetProductPrice(page, Url, store);
-                    bool Unavaliable = false;
-                    if (Price is null)
+                    using var dbcontext = new AppDbContext();
+                    var productRepository = new ProductRepository(dbcontext);
+                    var page = await context.NewPageAsync();
+
+                    try
                     {
-                        Unavaliable = true;
+                        foreach (var product in productsSubset)
+                        {
+                            string url = product.Url;
+                            await page.GotoAsync(url);
+                            Store store = (Store)product.Store_Id;
+                            double? price = await GetProductPrice(page, url, store);
+                            bool unavailable = price == null;
+
+                            productRepository.AlterProduct(product.Id, product.Name, product.Url, product.Store_Id, price, unavailable, DateTime.Now);
+
+                            if (price != null)
+                            {
+                                string logMessage = $"O Produto de ID {product.Id} foi atualizado com o preço {price}";
+                                await AddLogEntryAsync(LogType.ProductPriceUpdate, logMessage);
+                            }
+                        }
                     }
-                    productRepository.AlterProduct(product.Id, product.Name, product.Url, product.Store_Id, Price, Unavaliable, DateTime.Now);
-                    if (product.Current_Price != null)
+                    finally
                     {
-                        string logMessage = $"O Produto de ID {product.Id} foi atualizado o preço para {product.Current_Price}";
-                        await AddLogEntryAsync(LogType.ProductPriceUpdate, logMessage);
+                        await page.CloseAsync();
                     }
-                }
+                });
+
+                tasks.Add(task);
             }
+
+            await Task.WhenAll(tasks);
+
             await browser.CloseAsync();
             await browser.DisposeAsync();
         }
@@ -599,7 +645,7 @@ namespace Functions
                 context.ExecutionLog.Add(log);
                 context.SaveChanges();
 
-                return log.Id; // Returns the generated ID
+                return log.Id;
             }
         }
 
@@ -632,10 +678,26 @@ namespace Functions
 
                     context.SaveChanges();
                 }
-                else
+            }
+        }
+
+        public static void CloseChromiumAndNodeProcesses()
+        {
+            try
+            {                
+                foreach (var process in Process.GetProcessesByName("chromium"))
                 {
-                    Console.WriteLine("Log entry not found.");
+                    process.Kill();
                 }
+                
+                foreach (var process in Process.GetProcessesByName("node"))
+                {
+                    process.Kill();
+                }
+            }
+            catch (Exception ex)
+            {
+                Log(ex.InnerException.ToString());
             }
         }
 
