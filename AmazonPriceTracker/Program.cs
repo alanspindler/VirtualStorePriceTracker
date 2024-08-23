@@ -1,6 +1,4 @@
-﻿using Microsoft.Identity.Client;
-
-class VirtualStoresPriceTracker : Functions.Functions
+﻿class VirtualStoresPriceTracker : Functions.Functions
 {
     public static async Task Main()
     {
@@ -9,6 +7,7 @@ class VirtualStoresPriceTracker : Functions.Functions
         {
             try
             {
+                CloseChromiumAndNodeProcesses();
                 IdLogExecution = InsertExecutionLogStart();
                 var fillTask = FillEmptyProductNames();
                 var updatePriceTask = UpdateProductPrices();

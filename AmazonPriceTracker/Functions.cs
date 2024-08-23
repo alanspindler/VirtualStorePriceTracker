@@ -5,7 +5,8 @@ using Microsoft.Playwright;
 using File = System.IO.File;
 using System.Text.RegularExpressions;
 using Database;
-using Microsoft.EntityFrameworkCore;
+
+using System.Diagnostics;
 
 namespace Functions
 {
@@ -635,10 +636,26 @@ namespace Functions
 
                     context.SaveChanges();
                 }
-                else
+            }
+        }
+
+        public static void CloseChromiumAndNodeProcesses()
+        {
+            try
+            {                
+                foreach (var process in Process.GetProcessesByName("chromium"))
                 {
-                    Console.WriteLine("Log entry not found.");
+                    process.Kill();
                 }
+                
+                foreach (var process in Process.GetProcessesByName("node"))
+                {
+                    process.Kill();
+                }
+            }
+            catch (Exception ex)
+            {
+                Log(ex.InnerException.ToString());
             }
         }
 
