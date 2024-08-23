@@ -28,5 +28,8 @@ namespace PageObjects
         public static string LabelNuuvemProductName = "[class=product-title] >> nth = 0";
         public static string LabelNuuvemPriceInteger = "[class=integer] >> nth = 0";
         public static string LabelNuuvemPriceDecimal = "[class=decimal] >> nth = 0";
+
+        public static string LabelGreenManGamingProductName = "[ng-bind=\"product.name\"]";
+        public static string LabelGreenManGamingPrice = "[class='current-price pdp-price']";
     }
 }

@@ -7,6 +7,7 @@ using System.Text.RegularExpressions;
 using Database;
 
 using System.Diagnostics;
+using System.Xml.Linq;
 
 namespace Functions
 {
@@ -16,12 +17,13 @@ namespace Functions
         {
             Amazon = 1,
             Kabum = 2,
-            PS_Store = 3,
+            PSStore = 3,
             Steam = 4,
             Pichau = 5,
             Magazine_Luiza = 6,
             Terabyte_Shop = 7,
-            Nuuvem = 8
+            Nuuvem = 8,
+            GreenManGaming = 9
         }
 
         public enum LogType
@@ -48,7 +50,7 @@ namespace Functions
                 return price;
             }
 
-            else if (store == Store.PS_Store)
+            else if (store == Store.PSStore)
             {
                 price = await GetPricePlaystation(page, url);
                 return price;
@@ -97,6 +99,12 @@ namespace Functions
                 return price;
             }
 
+            else if (store == Store.GreenManGaming)
+            {
+                price = await GetPriceGreenManGaming(page, url);
+                return price;
+            }
+
             return null;
         }
 
@@ -121,7 +129,7 @@ namespace Functions
                     return null;
                 }
             }
-            else if (store == Store.PS_Store)
+            else if (store == Store.PSStore)
             {
                 textProductName = await page.Locator(LabelPlaystationProductName).TextContentAsync();
                 return textProductName;
@@ -159,6 +167,18 @@ namespace Functions
                 return textProductName;
             }
 
+            else if (store == Store.GreenManGaming)
+            {
+                int elements = await page.Locator(LabelGreenManGamingProductName).CountAsync();
+                if (elements > 0)
+                {
+                    elements = elements - 1;
+                    LabelGreenManGamingProductName = LabelGreenManGamingProductName + " >> nth = " + elements.ToString();
+                    textProductName = await page.Locator(LabelGreenManGamingProductName).TextContentAsync();
+                    return textProductName;
+                }
+            }
+
             return null;
         }
 
@@ -182,8 +202,8 @@ namespace Functions
         public static async Task<double?> GetPriceKabum(IPage page, string url)
         {
             string? priceElement = null;
-            int elementos = await page.Locator(LabelKabumPrice).CountAsync();
-            if (elementos > 0)
+            int elements = await page.Locator(LabelKabumPrice).CountAsync();
+            if (elements > 0)
             {
                 priceElement = await page.Locator(LabelKabumPrice).TextContentAsync();
             }
@@ -203,8 +223,8 @@ namespace Functions
         public static async Task<double?> GetPricePlaystation(IPage page, string url)
         {
             string? priceElement = null;
-            int elementos = await page.Locator(LabelPlaystationPrice).CountAsync();
-            if (elementos > 0)
+            int elements = await page.Locator(LabelPlaystationPrice).CountAsync();
+            if (elements > 0)
             {
                 priceElement = await page.Locator(LabelPlaystationPrice).TextContentAsync();
             }
@@ -228,8 +248,8 @@ namespace Functions
             var previousElement = page.Locator(previousElementXPath);
             var priceElementXPath = previousElementXPath + "/following-sibling::div";
             var priceElementPichau = page.Locator(priceElementXPath);
-            int elementos = await priceElementPichau.CountAsync();
-            if (elementos > 0)
+            int elements = await priceElementPichau.CountAsync();
+            if (elements > 0)
             {
                 priceElement = await priceElementPichau.TextContentAsync();
             }
@@ -252,12 +272,12 @@ namespace Functions
             int elementoNaoDisponivel = await page.Locator(LabelMagazineLuizaProdutoNaoDisponivel).CountAsync();
             if (elementoNaoDisponivel == 0)
             {
-                int elementos = await page.Locator(LabelMagazineLuizaPrice).CountAsync();
-                if (elementos > 0)
+                int elements = await page.Locator(LabelMagazineLuizaPrice).CountAsync();
+                if (elements > 0)
                 {
-                    elementos = elementos - 1;
-                    string elementosTexto = elementos.ToString();
-                    LabelMagazineLuizaPrice = LabelMagazineLuizaPrice + ">> nth = " + elementosTexto;
+                    elements = elements - 1;
+                    string elementsTexto = elements.ToString();
+                    LabelMagazineLuizaPrice = LabelMagazineLuizaPrice + ">> nth = " + elementsTexto;
                     priceElement = await page.Locator(LabelMagazineLuizaPrice).TextContentAsync();
                 }
             }
@@ -277,8 +297,8 @@ namespace Functions
         public static async Task<double?> GetPriceTeraByteShop(IPage page, string url)
         {
             string? priceElement = null;
-            int elementos = await page.Locator(LabelTerabytePrice).CountAsync();
-            if (elementos > 0)
+            int elements = await page.Locator(LabelTerabytePrice).CountAsync();
+            if (elements > 0)
             {
                 priceElement = await page.Locator(LabelTerabytePrice).TextContentAsync();
             }
@@ -304,12 +324,12 @@ namespace Functions
             string? priceElement = null;
             string? priceElementInteiro = null;
             string? priceElementDecimal = null;
-            int elementos = await page.Locator(LabelNuuvemPriceInteger).CountAsync();
-            if (elementos > 0)
+            int elements = await page.Locator(LabelNuuvemPriceInteger).CountAsync();
+            if (elements > 0)
             {
                 priceElementInteiro = await page.Locator(LabelNuuvemPriceInteger).TextContentAsync();
                 priceElementDecimal = await page.Locator(LabelNuuvemPriceDecimal).TextContentAsync();
-                priceElement = priceElementInteiro + "." +  priceElementDecimal;
+                priceElement = priceElementInteiro + "." + priceElementDecimal;
             }
 
             if (priceElement != null)
@@ -322,6 +342,30 @@ namespace Functions
                     {
                         return null;
                     }
+                    return price;
+                }
+            }
+            return null;
+        }
+
+        public static async Task<double?> GetPriceGreenManGaming(IPage page, string url)
+        {
+            string? priceElement = null;
+            int elements = await page.Locator(LabelGreenManGamingPrice).CountAsync();
+            if (elements > 0)
+            {
+                elements = elements - 1;
+                LabelGreenManGamingPrice = LabelGreenManGamingPrice + " >> nth = " + elements.ToString();
+                priceElement = await page.Locator(LabelGreenManGamingPrice).TextContentAsync();
+            }
+
+            if (priceElement != null)
+            {
+                priceElement = priceElement.Replace("R$", "").Replace(",", "").Trim();
+
+                if (double.TryParse(priceElement, out double price))
+                {
+                    price = price / 100;
                     return price;
                 }
             }
@@ -684,12 +728,12 @@ namespace Functions
         public static void CloseChromiumAndNodeProcesses()
         {
             try
-            {                
+            {
                 foreach (var process in Process.GetProcessesByName("chromium"))
                 {
                     process.Kill();
                 }
-                
+
                 foreach (var process in Process.GetProcessesByName("node"))
                 {
                     process.Kill();
