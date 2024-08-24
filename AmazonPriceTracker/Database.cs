@@ -68,6 +68,14 @@ namespace Database
         public string? ErrorMessage { get; set; }
     }
 
+    public class PriceHistory
+    {
+        public int Id { get; set; }
+        public int ProductId { get; set; }
+        public double CurrentPrice { get; set; }
+        public DateTime Date { get; set; }
+    }
+
 
     public class LoggingService
     {
@@ -87,6 +95,8 @@ namespace Database
 
         public DbSet<Log> Log { get; set; }
         public DbSet<ExecutionLog> ExecutionLog { get; set; }
+
+        public DbSet<PriceHistory> PriceHistory { get; set; }
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
@@ -128,6 +138,8 @@ namespace Database
                 product.Unavailable = NewUnavailable;
                 product.Last_Checked_Date = NewLast_Checked_Date;
                 _context.SaveChanges();
+
+                _context.Database.ExecuteSqlRaw("EXEC CheckAndInsertPriceHistory @ProductId = {0}", id);
             }
         }
 
@@ -179,4 +191,44 @@ namespace Database
             }
         }
     }
+
+    public class PriceHistoryRepository
+    {
+        private readonly Func<AppDbContext> _contextFactory;
+
+        public PriceHistoryRepository(Func<AppDbContext> contextFactory)
+        {
+            _contextFactory = contextFactory;
+        }
+
+        // Método para inserir um novo registro
+        public void AddPriceHistory(int productId, double currentPrice)
+        {
+            using (var context = _contextFactory())
+            {
+                var newPriceHistory = new PriceHistory
+                {
+                    ProductId = productId,
+                    CurrentPrice = currentPrice,
+                    Date = DateTime.Now
+                };
+
+                context.PriceHistory.Add(newPriceHistory);
+                context.SaveChanges();
+            }
+        }
+
+        // Método para retornar o registro mais recente de um produto com base no ID
+        public PriceHistory GetMostRecentPriceHistory(int productId)
+        {
+            using (var context = _contextFactory())
+            {
+                return context.PriceHistory
+                    .Where(ph => ph.ProductId == productId)
+                    .OrderByDescending(ph => ph.Date)
+                    .FirstOrDefault();
+            }
+        }
+    }
+
 }

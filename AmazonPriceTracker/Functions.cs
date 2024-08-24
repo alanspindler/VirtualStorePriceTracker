@@ -520,13 +520,9 @@ namespace Functions
 
             var groupedProducts = productRepository.GetProductsGroupedByStoreIdWithNullNames();
 
-            var tasks = new List<Task>();
-
             foreach (var storeGroup in groupedProducts)
             {
-                var storeGroupLocal = storeGroup;
-                var task = Task.Run(async () =>
-                {
+                var storeGroupLocal = storeGroup;                
                     var page = await context.NewPageAsync();
 
                     try
@@ -558,13 +554,7 @@ namespace Functions
                     {
                         await page.CloseAsync();
                     }
-                });
-
-                tasks.Add(task);
             }
-
-            await Task.WhenAll(tasks);
-
             await browser.CloseAsync();
             await browser.DisposeAsync();
         }
