@@ -273,6 +273,7 @@ namespace Functions
 
                 if (double.TryParse(priceElement, out double price))
                 {
+                    price = price / 100;
                     return price;
                 }
             }
