@@ -19,6 +19,7 @@
             catch (Exception ex)
             {
                 UpdateExecutionLogError(IdLogExecution, ex.ToString());
+                await CheckLogsAndRestartIfNeeded();
             }
 
             await Task.Delay(TimeSpan.FromMinutes(1));

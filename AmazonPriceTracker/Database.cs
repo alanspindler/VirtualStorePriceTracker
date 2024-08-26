@@ -40,12 +40,12 @@ namespace Database
         public User User { get; set; }
         public Product Product { get; set; }
     }
-    
+
     public class LogType
-    {     
+    {
         public int Id { get; set; }
-     
-        public string Description { get; set; }        
+
+        public string Description { get; set; }
     }
 
 
@@ -161,8 +161,8 @@ namespace Database
                 .Where(p => p.Name != null &&
                     (p.Last_Checked_Date == null || p.Last_Checked_Date < DateTime.Now.AddMinutes(-30) || (p.Current_Price == null && p.Unavailable == false)) &&
                     p.Active == true)
-                .OrderBy(p => p.Last_Checked_Date) 
-                .Take(180) 
+                .OrderBy(p => p.Last_Checked_Date)
+                .Take(180)
                 .GroupBy(p => p.Store_Id)
                 .ToDictionary(g => g.Key, g => g.ToList());
 
@@ -229,6 +229,16 @@ namespace Database
                     .FirstOrDefault();
             }
         }
-    }
 
+        public List<ExecutionLog> GetLast10ExecutionLogs()
+        {
+            using (var context = _contextFactory())
+            {
+                return context.ExecutionLog
+                .OrderByDescending(e => e.Id) // Ordena pelo ID mais recente
+                .Take(10) // Pega os 10 primeiros registros após a ordenação
+                .ToList();
+            }
+        }
+    }
 }

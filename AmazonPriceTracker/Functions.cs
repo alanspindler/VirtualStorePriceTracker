@@ -523,38 +523,38 @@ namespace Functions
 
             foreach (var storeGroup in groupedProducts)
             {
-                var storeGroupLocal = storeGroup;                
-                    var page = await context.NewPageAsync();
+                var storeGroupLocal = storeGroup;
+                var page = await context.NewPageAsync();
 
-                    try
+                try
+                {
+                    foreach (var product in storeGroupLocal.Value)
                     {
-                        foreach (var product in storeGroupLocal.Value)
+                        string Url = product.Url;
+                        await page.GotoAsync(Url);
+                        Store store = (Store)product.Store_Id;
+                        string Name = await GetProductName(page, Url, store);
+                        bool Unavaliable = false;
+                        if (Name != null)
                         {
-                            string Url = product.Url;
-                            await page.GotoAsync(Url);
-                            Store store = (Store)product.Store_Id;
-                            string Name = await GetProductName(page, Url, store);
-                            bool Unavaliable = false;
-                            if (Name != null)
-                            {
-                                Name = Name.Trim();
-                            }
-                            if (Name is null)
-                            {
-                                Unavaliable = true;
-                            }
-                            productRepository.AlterProduct(product.Id, Name, product.Url, product.Store_Id, product.Current_Price, Unavaliable, DateTime.Now);
-                            if (product.Name != null)
-                            {
-                                string logMessage = $"O Produto de ID {product.Id} foi atualizado com o nome {product.Name}";
-                                await AddLogEntryAsync(LogType.ProductNameUpdate, logMessage);
-                            }
+                            Name = Name.Trim();
+                        }
+                        if (Name is null)
+                        {
+                            Unavaliable = true;
+                        }
+                        productRepository.AlterProduct(product.Id, Name, product.Url, product.Store_Id, product.Current_Price, Unavaliable, DateTime.Now);
+                        if (product.Name != null)
+                        {
+                            string logMessage = $"O Produto de ID {product.Id} foi atualizado com o nome {product.Name}";
+                            await AddLogEntryAsync(LogType.ProductNameUpdate, logMessage);
                         }
                     }
-                    finally
-                    {
-                        await page.CloseAsync();
-                    }
+                }
+                finally
+                {
+                    await page.CloseAsync();
+                }
             }
             await browser.CloseAsync();
             await browser.DisposeAsync();
@@ -771,6 +771,50 @@ namespace Functions
             }
         }
 
+        public static async Task CheckLogsAndRestartIfNeeded()
+        {
+            using var dbcontext = new AppDbContext();
+            var executionLogs = dbcontext.ExecutionLog
+                .OrderByDescending(log => log.Id)
+                .Take(10)
+                .ToList();
+
+            if (executionLogs.All(log => log.Status == "ERROR"))
+            {
+                RestartApplication();
+            }
+        }
+
+        // Método para reiniciar a aplicação
+        private static void RestartApplication()
+        {
+
+            using (var context = new AppDbContext())
+            {
+                var log = new ExecutionLog
+                {
+                    StartDate = DateTime.Now,
+                    Status = "RESTART",
+                    ErrorMessage = null,
+                    EndDate = DateTime.Now
+                };
+
+                context.ExecutionLog.Add(log);
+                context.SaveChanges();                
+            }
+
+            var processStartInfo = new ProcessStartInfo
+            {
+                FileName = Process.GetCurrentProcess().MainModule.FileName,
+                UseShellExecute = true,
+                CreateNoWindow = false
+            };
+
+            Process.Start(processStartInfo);
+            Process.GetCurrentProcess().Kill();
+        }
     }
 }
+
+
 
