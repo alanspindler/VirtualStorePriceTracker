@@ -197,15 +197,19 @@ namespace Functions
 
         public static async Task<double?> GetPriceAmazon(IPage page, string url)
         {
-            var priceElement = await page.QuerySelectorAsync(LabelAmazonPrice);
+            var priceElementInteger = await page.QuerySelectorAsync(LabelAmazonPriceInteger);
+            var priceElementDecimal = await page.QuerySelectorAsync(LabelAmazonPriceDecimal);
 
-            if (priceElement != null)
+            if (priceElementInteger != null)
             {
-                var priceText = await priceElement.InnerTextAsync();
+                var priceTextInteger = await priceElementInteger.InnerTextAsync();
+                var priceTextDecimal = await priceElementDecimal.InnerTextAsync();
+                var priceText = priceTextInteger.ToString() + priceTextDecimal.ToString();
                 priceText = priceText.Replace("\n", "").Replace(",", "");
 
                 if (double.TryParse(priceText, out double price))
                 {
+                    price = price / 100;
                     return price;
                 }
             }

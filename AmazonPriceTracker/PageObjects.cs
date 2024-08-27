@@ -6,7 +6,8 @@ namespace PageObjects
 {
     public class PageObjects
     {
-        public static string LabelAmazonPrice = "#apex_desktop .a-price-whole";
+        public static string LabelAmazonPriceInteger = "#apex_desktop .a-price-whole";
+        public static string LabelAmazonPriceDecimal = "#apex_desktop .a-price-fraction";
         public static string LabelAmazonProductName = "[class='a-size-large product-title-word-break']";
 
         public static string LabelKabumPrice = ".finalPrice";

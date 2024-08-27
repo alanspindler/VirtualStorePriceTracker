@@ -24,7 +24,7 @@ namespace API
 
     public static class StemAPI
     {
-        public static async Task<int?> GetSteamPrice(string appId)
+        public static async Task<double?> GetSteamPrice(string appId)
         {
             var options = new RestClientOptions($"https://store.steampowered.com/api/appdetails?appids={appId}&cc=bra");
             var client = new RestClient(options);
@@ -49,7 +49,7 @@ namespace API
                             }
                             else
                             {
-                                var finalPrice = appData.data.price_overview.final;
+                                double? finalPrice = appData.data.price_overview.final;
                                 finalPrice = finalPrice / 100;
                                 return finalPrice;
                             }

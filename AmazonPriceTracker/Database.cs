@@ -1,5 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
+﻿using System.ComponentModel.DataAnnotations.Schema;
 using Microsoft.EntityFrameworkCore;
 
 namespace Database
@@ -235,8 +234,8 @@ namespace Database
             using (var context = _contextFactory())
             {
                 return context.ExecutionLog
-                .OrderByDescending(e => e.Id) // Ordena pelo ID mais recente
-                .Take(10) // Pega os 10 primeiros registros após a ordenação
+                .OrderByDescending(e => e.Id)
+                .Take(10)
                 .ToList();
             }
         }
