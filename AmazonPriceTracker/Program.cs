@@ -9,6 +9,7 @@
             {
                 IdLogExecution = InsertExecutionLogStart();
                 CloseChromiumAndNodeProcesses();
+                var updateShortenedUrls = ExpandAndSaveShortenedUrls();
                 var fillTask = FillEmptyProductNames();
                 var updatePriceTask = UpdateProductPrices();
                 var notifyUsersTask = CheckAndNotifyUsersAsync();

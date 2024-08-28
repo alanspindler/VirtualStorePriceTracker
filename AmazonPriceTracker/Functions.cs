@@ -8,6 +8,7 @@ using Database;
 
 using System.Diagnostics;
 using System.Xml.Linq;
+using Microsoft.EntityFrameworkCore;
 
 namespace Functions
 {
@@ -564,6 +565,37 @@ namespace Functions
             await browser.DisposeAsync();
         }
 
+        public static async Task<string> GetFullUrlFromShortenedAmazonUrl(string shortenedUrl)
+        {
+            var playwright = await Playwright.CreateAsync();
+            var browser = await playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions { Headless = true });
+            var context = await browser.NewContextAsync(new BrowserNewContextOptions
+            {
+                UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.4692.99 Safari/537.36"
+            });
+
+            var page = await context.NewPageAsync();
+
+            try
+            {
+                var response = await page.GotoAsync(shortenedUrl);
+
+                await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
+
+                string fullUrl = page.Url;
+
+                return fullUrl;
+            }
+            finally
+            {
+                await page.CloseAsync();
+                await browser.CloseAsync();
+                await browser.DisposeAsync();
+            }
+        }
+
+
+
         public static async Task UpdateProductPrices()
         {
             var playwright = await Playwright.CreateAsync();
@@ -755,6 +787,46 @@ namespace Functions
             }
         }
 
+        public async static Task ExpandAndSaveShortenedUrls()
+        {
+            using var dbcontext = new AppDbContext();
+            var productRepository = new ProductRepository(dbcontext);
+            using (var _context = new AppDbContext())
+            {
+                var shortenedUrls = productRepository.GetShortenedAmazonUrls();
+                if (shortenedUrls.Count > 0)
+                {
+                    var playwright = await Playwright.CreateAsync();
+                    var browser = await playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions { Headless = true });
+                    var context = await browser.NewContextAsync(new BrowserNewContextOptions
+                    {
+                        UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.4692.99 Safari/537.36"
+                    });
+
+                    try
+                    {
+                        var page = await context.NewPageAsync();
+
+                        foreach (var shortenedUrl in shortenedUrls)
+                        {
+                            string expandedUrl = await GetFullUrlFromShortenedAmazonUrl(shortenedUrl);
+                            var product = _context.Product.FirstOrDefault(p => p.Url == shortenedUrl);
+                            if (product != null)
+                            {
+                                productRepository.AlterProduct(product.Id, product.Name, expandedUrl, product.Store_Id, product.Current_Price, product.Unavailable, DateTime.Now);
+                            }
+                        }
+                    }
+
+                    finally
+                    {
+                        await context.CloseAsync();
+                        await browser.DisposeAsync();
+                    }
+                }
+            }
+        }
+
         public static void CloseChromiumAndNodeProcesses()
         {
             try
@@ -804,7 +876,7 @@ namespace Functions
                 };
 
                 context.ExecutionLog.Add(log);
-                context.SaveChanges();                
+                context.SaveChanges();
             }
 
             var processStartInfo = new ProcessStartInfo

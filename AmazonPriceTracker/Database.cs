@@ -168,6 +168,16 @@ namespace Database
             return productsPendingPriceUpdate;
         }
 
+        public List<string> GetShortenedAmazonUrls()
+        {
+            var shortenedUrls = _context.Product
+                .Where(p => p.Url.Contains("a.co/"))
+                .Select(p => p.Url)
+                .ToList();
+
+            return shortenedUrls;
+        }
+
         public string ReturnEmailRecipient(int userId)
         {
             using (var context = new AppDbContext())
