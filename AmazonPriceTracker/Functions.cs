@@ -730,7 +730,7 @@ namespace Functions
                     {
 
                         var subject = $"Alerta de preço: Produto {item.Product.Name} abaixo de R${item.User_Product.Price}";
-                        var body = $"O produto {item.Product.Name} na URL {item.Product.Url} está com um preço de R${item.Product.Current_Price}.";
+                        var body = $"O produto {item.Product.Name} na URL <a href='{item.Product.Url}' target='_blank'>{item.Product.Url}</a> está com um preço de R${item.Product.Current_Price}.";
                         await SendEmail(subject, body, item.User.Id);
 
                         string logMessage = $"Email enviado referente ao produto {item.Product.Name} foi enviado para o e-mail {item.User.Email}";
