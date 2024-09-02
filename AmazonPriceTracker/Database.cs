@@ -21,6 +21,7 @@ namespace Database
         public string Email { get; set; }
         public string Password { get; set; }
         public bool Active { get; set; }
+        public bool WelcomeEmailSent { get; set; }
     }
 
     public class User_Product
@@ -249,5 +250,17 @@ namespace Database
                 .ToList();
             }
         }
+        public List<User> GetUsersWithoutWelcomeEmail()
+        {
+            using (var context = new AppDbContext())
+            {
+                var usersWithoutEmail = context.User
+                    .Where(u => !u.WelcomeEmailSent)
+                    .ToList();
+
+                return usersWithoutEmail;
+            }
+        }
+
     }
 }

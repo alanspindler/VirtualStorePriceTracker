@@ -13,7 +13,8 @@
                 var fillTask = FillEmptyProductNames();
                 var updatePriceTask = UpdateProductPrices();
                 var notifyUsersTask = CheckAndNotifyUsersAsync();
-                await Task.WhenAll(fillTask, updatePriceTask, notifyUsersTask);
+                var sendWelcomeEmailTask = NotifyUsersWithWelcomeEmailAsync();
+                await Task.WhenAll(fillTask, updatePriceTask, notifyUsersTask, sendWelcomeEmailTask);
                 UpdateExecutionLogSuccess(IdLogExecution);
             }
 

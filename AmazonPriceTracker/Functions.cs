@@ -197,7 +197,7 @@ namespace Functions
             {
                 textProductName = await page.Locator(LabelGOGProductName).TextContentAsync();
                 return textProductName;
-            }        
+            }
 
             else if (store == Store.Epic)
             {
@@ -430,7 +430,7 @@ namespace Functions
         public static async Task<double?> GetPriceEpic(IPage page, string url)
         {
             var scriptContent = await page.Locator(ScriptEpic).InnerTextAsync();
-            var jsonObject = JsonDocument.Parse(scriptContent).RootElement;            
+            var jsonObject = JsonDocument.Parse(scriptContent).RootElement;
             var firstOffer = jsonObject.GetProperty("offers")[0];
             var price = firstOffer.GetProperty("priceSpecification").GetProperty("price").GetDouble();
             return (price);
@@ -524,7 +524,7 @@ namespace Functions
             using var dbcontext = new AppDbContext();
             var productRepository = new ProductRepository(dbcontext);
             var playwright = await Playwright.CreateAsync();
-            var browser = await playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions { Headless = true });
+            var browser = await playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions { Headless = false });
             var context = await browser.NewContextAsync(new BrowserNewContextOptions
             {
                 UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.4692.99 Safari/537.36"
@@ -743,6 +743,37 @@ namespace Functions
                 }
             }
         }
+
+        public static async Task NotifyUsersWithWelcomeEmailAsync()
+        {
+            using (var context = new AppDbContext())
+            {
+                var usersWithoutWelcomeEmail = context.User
+                    .Where(u => !u.WelcomeEmailSent)
+                    .ToList();
+
+                foreach (var user in usersWithoutWelcomeEmail)
+                {
+                    var subject = "Bem-vindo ao Quer Pagar Quanto!";
+                    var body = $"Olá {user.Email},<br/><br/>" +
+           "Bem-vindo ao Quer Pagar Quanto! Estamos felizes em tê-lo conosco.<br/><br/>" +
+           "Para garantir que você receba os avisos de preços do nosso sistema, por favor, marque este e-mail como \"Não lixo eletrônico\".<br/>" +
+           "Não se preocupe, nós não enviaremos e-mails de promoção ou similares, e seus dados não serão repassados a terceiros.<br/><br/>" +
+           "Atenciosamente,<br/>" +
+           "Equipe Quer Pagar Quanto";
+
+                    await SendEmail(subject, body, user.Id);
+
+                    string logMessage = $"E-mail de boas-vindas enviado para {user.Email}";
+                    await AddLogEntryAsync(LogType.EmailSent, logMessage);
+
+                    user.WelcomeEmailSent = true;
+
+                    await context.SaveChangesAsync();
+                }
+            }
+        }
+
 
         public static async Task AddLogEntryAsync(LogType logType, string description)
         {
