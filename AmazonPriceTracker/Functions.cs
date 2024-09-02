@@ -25,7 +25,8 @@ namespace Functions
             Terabyte_Shop = 7,
             Nuuvem = 8,
             GreenManGaming = 9,
-            GOG = 10
+            GOG = 10,
+            Epic = 11
         }
 
         public enum LogType
@@ -34,7 +35,6 @@ namespace Functions
             ProductPriceUpdate = 2,
             EmailSent = 3
         }
-
 
         public static async Task<double?> GetProductPrice(IPage page, string url, Store store)
         {
@@ -110,6 +110,12 @@ namespace Functions
             else if (store == Store.GOG)
             {
                 price = await GetPriceGOG(page, url);
+                return price;
+            }
+
+            else if (store == Store.Epic)
+            {
+                price = await GetPriceEpic(page, url);
                 return price;
             }
 
@@ -190,6 +196,14 @@ namespace Functions
             else if (store == Store.GOG)
             {
                 textProductName = await page.Locator(LabelGOGProductName).TextContentAsync();
+                return textProductName;
+            }        
+
+            else if (store == Store.Epic)
+            {
+                var scriptContent = await page.Locator(ScriptEpic).InnerTextAsync();
+                var jsonObject = JsonDocument.Parse(scriptContent).RootElement;
+                textProductName = jsonObject.GetProperty("name").GetString();
                 return textProductName;
             }
 
@@ -411,6 +425,15 @@ namespace Functions
                 }
             }
             return null;
+        }
+
+        public static async Task<double?> GetPriceEpic(IPage page, string url)
+        {
+            var scriptContent = await page.Locator(ScriptEpic).InnerTextAsync();
+            var jsonObject = JsonDocument.Parse(scriptContent).RootElement;            
+            var firstOffer = jsonObject.GetProperty("offers")[0];
+            var price = firstOffer.GetProperty("priceSpecification").GetProperty("price").GetDouble();
+            return (price);
         }
 
         public static int? returnSteamIdapp(string url)

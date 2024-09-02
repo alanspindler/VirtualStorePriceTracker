@@ -35,5 +35,8 @@ namespace PageObjects
 
         public static string LabelGOGProductName = "[selenium-id=\"ProductTitle\"]";
         public static string LabelGOGPrice = "[selenium-id=\"ProductFinalPrice\"]";
+
+        public static string ScriptEpic = "script#_schemaOrgMarkup-Product";
+
     }
 }
