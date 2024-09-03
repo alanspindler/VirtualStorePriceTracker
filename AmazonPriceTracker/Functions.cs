@@ -26,7 +26,8 @@ namespace Functions
             Nuuvem = 8,
             GreenManGaming = 9,
             GOG = 10,
-            Epic = 11
+            Epic = 11,
+            Xbox = 12
         }
 
         public enum LogType
@@ -119,6 +120,12 @@ namespace Functions
                 return price;
             }
 
+            else if (store == Store.Xbox)
+            {
+                price = await GetPriceXbox(page, url);
+                return price;
+            }
+
             return null;
         }
 
@@ -207,6 +214,18 @@ namespace Functions
                 return textProductName;
             }
 
+            else if (store == Store.GOG)
+            {
+                textProductName = await page.Locator(LabelGOGProductName).TextContentAsync();
+                return textProductName;
+            }
+
+            else if (store == Store.Xbox)
+            {
+                textProductName = await page.Locator(LabelXboxProductName).TextContentAsync();
+                return textProductName;
+            }
+
             return null;
         }
 
@@ -291,8 +310,7 @@ namespace Functions
                 priceElement = priceElement.Replace("R$", "").Trim();
 
                 if (double.TryParse(priceElement, out double price))
-                {
-                    price = price / 100;
+                {                    
                     return price;
                 }
             }
@@ -436,6 +454,38 @@ namespace Functions
             return (price);
         }
 
+        public static async Task<double?> GetPriceXbox(IPage page, string url)
+        {
+            string? priceElement = null;
+            Thread.Sleep(2000);
+            await page.WaitForLoadStateAsync(LoadState.Load);
+            int elements = await page.Locator(LabelXboxPrice).CountAsync();
+            if (elements == 0)
+            {
+                Thread.Sleep(6000);
+                elements = await page.Locator(LabelXboxPrice).CountAsync();
+                if (elements > 0)
+                {
+                    priceElement = await page.Locator(LabelXboxPrice).TextContentAsync();
+                }
+            }
+            else
+            {
+                priceElement = await page.Locator(LabelXboxPrice).TextContentAsync();
+            }
+
+            if (priceElement != null)
+            {
+                priceElement = priceElement.Replace("R$", "").Trim();
+
+                if (double.TryParse(priceElement, out double price))
+                {
+                    return price;
+                }
+            }
+            return null;
+        }
+
         public static int? returnSteamIdapp(string url)
         {
             int? idApp = null;
@@ -524,7 +574,7 @@ namespace Functions
             using var dbcontext = new AppDbContext();
             var productRepository = new ProductRepository(dbcontext);
             var playwright = await Playwright.CreateAsync();
-            var browser = await playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions { Headless = false });
+            var browser = await playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions { Headless = true });
             var context = await browser.NewContextAsync(new BrowserNewContextOptions
             {
                 UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.4692.99 Safari/537.36"
@@ -634,9 +684,8 @@ namespace Functions
                 var url = request.Url;
 
                 if (url.EndsWith(".png") || url.EndsWith(".jpg") || url.EndsWith(".jpeg") || url.EndsWith(".gif") ||
-                    url.EndsWith(".js") || url.EndsWith(".css") || url.EndsWith(".woff") || url.EndsWith(".woff2") ||
-                    url.EndsWith(".ttf") || url.EndsWith(".eot") || url.EndsWith(".mp4") || url.EndsWith(".webm") ||
-                    url.EndsWith(".ogg"))
+                    url.EndsWith(".woff") || url.EndsWith(".woff2") || url.EndsWith(".ttf") || url.EndsWith(".eot") ||
+                    url.EndsWith(".mp4") || url.EndsWith(".webm") || url.EndsWith(".ogg"))
                 {
                     await route.AbortAsync();
                     return;
