@@ -14,7 +14,8 @@
                 var updatePriceTask = UpdateProductPrices();
                 var notifyUsersTask = CheckAndNotifyUsersAsync();
                 var sendWelcomeEmailTask = NotifyUsersWithWelcomeEmailAsync();
-                await Task.WhenAll(fillTask, updatePriceTask, notifyUsersTask, sendWelcomeEmailTask);
+                var sendWelcomeWhatsappTask = NotifyUsersWithWelcomeWhatsappAsync();
+                await Task.WhenAll(fillTask, updatePriceTask, notifyUsersTask, sendWelcomeEmailTask, sendWelcomeWhatsappTask);
                 UpdateExecutionLogSuccess(IdLogExecution);
             }
 

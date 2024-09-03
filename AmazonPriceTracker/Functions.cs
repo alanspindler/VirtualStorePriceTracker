@@ -5,10 +5,8 @@ using Microsoft.Playwright;
 using File = System.IO.File;
 using System.Text.RegularExpressions;
 using Database;
-
 using System.Diagnostics;
-using System.Xml.Linq;
-using Microsoft.EntityFrameworkCore;
+using API;
 
 namespace Functions
 {
@@ -34,7 +32,8 @@ namespace Functions
         {
             ProductNameUpdate = 1,
             ProductPriceUpdate = 2,
-            EmailSent = 3
+            EmailSent = 3,
+            WhatsappMessageSent = 5
         }
 
         public static async Task<double?> GetProductPrice(IPage page, string url, Store store)
@@ -310,7 +309,7 @@ namespace Functions
                 priceElement = priceElement.Replace("R$", "").Trim();
 
                 if (double.TryParse(priceElement, out double price))
-                {                    
+                {
                     return price;
                 }
             }
@@ -785,6 +784,18 @@ namespace Functions
                         string logMessage = $"Email enviado referente ao produto {item.Product.Name} foi enviado para o e-mail {item.User.Email}";
                         await AddLogEntryAsync(LogType.EmailSent, logMessage);
 
+                        string formattedPrice = string.Format(new System.Globalization.CultureInfo("pt-BR"), "{0:C}", item.Product.Current_Price);
+                        string WhastappResponse = WhatsAppApiService.SendWhatsappMessage(user.Phone, "preco_abaixo_de", item.Product.Name.ToString(), item.Product.Url.ToString(), formattedPrice);
+                        if (WhastappResponse.Contains("\"message_status\":\"accepted\""))
+                        {
+                            logMessage = $"Mensagem enviada referente ao produto {item.Product.Name} foi enviado para o whatsapp {item.User.Phone}";
+                            await AddLogEntryAsync(LogType.WhatsappMessageSent, logMessage);
+                        }
+                        else
+                        {
+                            await AddLogEntryAsync(LogType.WhatsappMessageSent, WhastappResponse);
+                        }
+
                         userProduct.Last_notification = DateTime.Now;
 
                         await context.SaveChangesAsync();
@@ -823,6 +834,24 @@ namespace Functions
             }
         }
 
+
+        public static async Task NotifyUsersWithWelcomeWhatsappAsync()
+        {
+            using (var context = new AppDbContext())
+            {
+                var usersWithoutWelcomeEmail = context.User
+                    .Where(u => !u.WelcomeWhatsappSent && u.Phone != null)
+                    .ToList();
+
+                foreach (var user in usersWithoutWelcomeEmail)
+                {
+                    WhatsAppApiService.SendWhatsappMessage(user.Phone, "cadastro_aplicativo");
+                    user.WelcomeWhatsappSent = true;
+                    await context.SaveChangesAsync();
+                    await AddLogEntryAsync(LogType.EmailSent, "Mensagem de Cadastro no Aplicativo");
+                }
+            }
+        }
 
         public static async Task AddLogEntryAsync(LogType logType, string description)
         {

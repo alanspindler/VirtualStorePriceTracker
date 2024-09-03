@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations.Schema;
+﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 using Microsoft.EntityFrameworkCore;
 
 namespace Database
@@ -22,6 +23,8 @@ namespace Database
         public string Password { get; set; }
         public bool Active { get; set; }
         public bool WelcomeEmailSent { get; set; }
+        public string? Phone { get; set; }
+        public bool WelcomeWhatsappSent { get; set; }
     }
 
     public class User_Product
@@ -44,10 +47,20 @@ namespace Database
     public class LogType
     {
         public int Id { get; set; }
-
         public string Description { get; set; }
     }
 
+    public class Config
+    {
+        [Key]
+        public int Id { get; set; }
+
+        [Column("Key")]
+        public string Key { get; set; }
+
+        [Column("Value")]
+        public string Value { get; set; }
+    }
 
     public class Log
     {
@@ -97,6 +110,8 @@ namespace Database
         public DbSet<ExecutionLog> ExecutionLog { get; set; }
 
         public DbSet<PriceHistory> PriceHistory { get; set; }
+
+        public DbSet<Config> Config { get; set; }
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
@@ -211,7 +226,6 @@ namespace Database
             _contextFactory = contextFactory;
         }
 
-        // Método para inserir um novo registro
         public void AddPriceHistory(int productId, double currentPrice)
         {
             using (var context = _contextFactory())
@@ -228,7 +242,6 @@ namespace Database
             }
         }
 
-        // Método para retornar o registro mais recente de um produto com base no ID
         public PriceHistory GetMostRecentPriceHistory(int productId)
         {
             using (var context = _contextFactory())
@@ -250,17 +263,5 @@ namespace Database
                 .ToList();
             }
         }
-        public List<User> GetUsersWithoutWelcomeEmail()
-        {
-            using (var context = new AppDbContext())
-            {
-                var usersWithoutEmail = context.User
-                    .Where(u => !u.WelcomeEmailSent)
-                    .ToList();
-
-                return usersWithoutEmail;
-            }
-        }
-
     }
 }
