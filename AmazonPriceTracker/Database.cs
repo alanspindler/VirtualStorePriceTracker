@@ -177,7 +177,7 @@ namespace Database
                     (p.Last_Checked_Date == null || p.Last_Checked_Date < DateTime.Now.AddMinutes(-30) || (p.Current_Price == null && p.Unavailable == false)) &&
                     p.Active == true)
                 .OrderBy(p => p.Last_Checked_Date)
-                .Take(10)
+                .Take(180)
                 .GroupBy(p => p.Name)
                 .ToDictionary(g => g.Key, g => g.ToList());
 
