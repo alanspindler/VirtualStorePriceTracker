@@ -446,12 +446,12 @@ namespace Functions
 
         public static async Task<double?> GetPriceEpic(IPage page, string url)
         {
-            var scriptContent = await page.Locator(ScriptEpic).InnerTextAsync();
-            var jsonObject = JsonDocument.Parse(scriptContent).RootElement;
-            var firstOffer = jsonObject.GetProperty("offers")[0];
-            var price = firstOffer.GetProperty("priceSpecification").GetProperty("price").GetDouble();
-            return (price);
-        }
+                var scriptContent = await page.Locator(ScriptEpic).InnerTextAsync();
+                var jsonObject = JsonDocument.Parse(scriptContent).RootElement;
+                var firstOffer = jsonObject.GetProperty("offers")[0];
+                var price = firstOffer.GetProperty("priceSpecification").GetProperty("price").GetDouble();
+                return price;
+            }
 
         public static async Task<double?> GetPriceXbox(IPage page, string url)
         {
@@ -697,7 +697,7 @@ namespace Functions
             var products = productRepository.GetProductsGroupedByStoreIdPendingPriceUpdate()
                                             .SelectMany(g => g.Value)
                                             .OrderBy(p => p.Last_Checked_Date)
-                                            .Take(10)
+                                            .Take(200)
                                             .ToList();
 
             int totalProducts = products.Count;
@@ -848,7 +848,7 @@ namespace Functions
                     WhatsAppApiService.SendWhatsappMessage(user.Phone, "cadastro_aplicativo");
                     user.WelcomeWhatsappSent = true;
                     await context.SaveChangesAsync();
-                    await AddLogEntryAsync(LogType.EmailSent, "Mensagem de Cadastro no Aplicativo");
+                    await AddLogEntryAsync(LogType.WhatsappMessageSent, "Mensagem de Cadastro no Aplicativo");
                 }
             }
         }
