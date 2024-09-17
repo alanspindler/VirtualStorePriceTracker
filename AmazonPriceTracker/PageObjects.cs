@@ -40,8 +40,5 @@ namespace PageObjects
 
         public static string LabelXboxProductName = "data-testid=ProductDetailsHeaderProductTitle";
         public static string LabelXboxPrice = "[class*='AcquisitionButtons-module__listedPrice']";
-
-
-
     }
 }
