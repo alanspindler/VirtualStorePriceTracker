@@ -697,11 +697,11 @@ namespace Functions
             var products = productRepository.GetProductsGroupedByStoreIdPendingPriceUpdate()
                                             .SelectMany(g => g.Value)
                                             .OrderBy(p => p.Last_Checked_Date)
-                                            .Take(200)
+                                            .Take(10)
                                             .ToList();
 
             int totalProducts = products.Count;
-            int threads = 4;
+            int threads = 3;
             int productsPerThread = totalProducts / threads;
             int remainder = totalProducts % threads;
 

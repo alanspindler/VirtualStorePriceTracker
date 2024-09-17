@@ -170,7 +170,7 @@ namespace Database
             return productsWithNullNames;
         }
 
-        public Dictionary<int, List<Product>> GetProductsGroupedByStoreIdPendingPriceUpdate()
+        public Dictionary<string, List<Product>> GetProductsGroupedByStoreIdPendingPriceUpdate()
         {
             var productsPendingPriceUpdate = _context.Product
                 .Where(p => p.Name != null &&
@@ -178,7 +178,7 @@ namespace Database
                     p.Active == true)
                 .OrderBy(p => p.Last_Checked_Date)
                 .Take(180)
-                .GroupBy(p => p.Store_Id)
+                .GroupBy(p => p.Name)
                 .ToDictionary(g => g.Key, g => g.ToList());
 
             return productsPendingPriceUpdate;
