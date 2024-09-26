@@ -7,6 +7,7 @@ using System.Text.RegularExpressions;
 using Database;
 using System.Diagnostics;
 using API;
+using System.Linq.Expressions;
 
 namespace Functions
 {
@@ -446,12 +447,12 @@ namespace Functions
 
         public static async Task<double?> GetPriceEpic(IPage page, string url)
         {
-                var scriptContent = await page.Locator(ScriptEpic).InnerTextAsync();
-                var jsonObject = JsonDocument.Parse(scriptContent).RootElement;
-                var firstOffer = jsonObject.GetProperty("offers")[0];
-                var price = firstOffer.GetProperty("priceSpecification").GetProperty("price").GetDouble();
-                return price;
-            }
+            var scriptContent = await page.Locator(ScriptEpic).InnerTextAsync();
+            var jsonObject = JsonDocument.Parse(scriptContent).RootElement;
+            var firstOffer = jsonObject.GetProperty("offers")[0];
+            var price = firstOffer.GetProperty("priceSpecification").GetProperty("price").GetDouble();
+            return price;
+        }
 
         public static async Task<double?> GetPriceXbox(IPage page, string url)
         {
@@ -518,8 +519,9 @@ namespace Functions
             return (credentials["email"], credentials["password"]);
         }
 
-        public static async Task SendEmail(string subject, string body, int user_id)
+        public static async Task<string?> SendEmail(string subject, string body, int user_id)
         {
+            string erro = null;
             using var dbcontext = new AppDbContext();
             var (email, password) = ReadEmailCredentials();
             var productRepository = new ProductRepository(dbcontext);
@@ -545,11 +547,14 @@ namespace Functions
                     await smtpClient.SendMailAsync(mailMessage);
                     string recipientsList = string.Join(", ", recipient);
                     Log($"E-mail enviado para: {recipientsList}");
+                    return erro;
                 }
                 catch (SmtpException ex)
                 {
                     string recipientsList = string.Join(", ", recipient);
                     Log($"Erro ao enviar e-mail para {recipientsList}:\nCódigo de status: {ex.StatusCode}\nMensagem de erro: {ex.Message}\nMensagem de erro interna: {ex.InnerException?.Message}");
+                    erro = ex.ToString();
+                    return erro;
                 }
             }
             catch (Exception ex)
@@ -560,6 +565,8 @@ namespace Functions
                 {
                     Log($"Mensagem de erro interna: {ex.InnerException.Message}");
                 }
+                erro = ex.ToString();
+                return erro;
             }
         }
 
@@ -666,8 +673,6 @@ namespace Functions
             }
         }
 
-
-
         public static async Task UpdateProductPrices()
         {
             var playwright = await Playwright.CreateAsync();
@@ -697,7 +702,7 @@ namespace Functions
             var products = productRepository.GetProductsGroupedByStoreIdPendingPriceUpdate()
                                             .SelectMany(g => g.Value)
                                             .OrderBy(p => p.Last_Checked_Date)
-                                            .Take(200)
+                                            .Take(10)
                                             .ToList();
 
             int totalProducts = products.Count;
@@ -779,10 +784,19 @@ namespace Functions
 
                         var subject = $"Alerta de preço: Produto {item.Product.Name} abaixo de R${item.User_Product.Price}";
                         var body = $"O produto {item.Product.Name} na URL <a href='{item.Product.Url}' target='_blank'>{item.Product.Url}</a> está com um preço de R${item.Product.Current_Price}.";
-                        await SendEmail(subject, body, item.User.Id);
+                        string? erroEnvioEmail = await SendEmail(subject, body, item.User.Id);
 
-                        string logMessage = $"Email enviado referente ao produto {item.Product.Name} foi enviado para o e-mail {item.User.Email}";
-                        await AddLogEntryAsync(LogType.EmailSent, logMessage);
+                        string logMessage = null;
+                        if (erroEnvioEmail == null)
+                        {
+                            logMessage = $"Email enviado referente ao produto {item.Product.Name} foi enviado para o e-mail {item.User.Email}";
+                            await AddLogEntryAsync(LogType.EmailSent, logMessage);
+                        }
+
+                        else
+                        {
+                            await AddLogEntryAsync(LogType.EmailSent, $"Erro ao enviar e-mail para o e-mail {item.User.Email.ToString()}" + erroEnvioEmail.ToString());
+                        }
 
                         string formattedPrice = string.Format(new System.Globalization.CultureInfo("pt-BR"), "{0:C}", item.Product.Current_Price);
                         string WhastappResponse = WhatsAppApiService.SendWhatsappMessage(user.Phone, "preco_abaixo_de", item.Product.Name.ToString(), item.Product.Url.ToString(), formattedPrice);
@@ -814,26 +828,32 @@ namespace Functions
 
                 foreach (var user in usersWithoutWelcomeEmail)
                 {
-                    var subject = "Bem-vindo ao Quer Pagar Quanto!";
-                    var body = $"Olá {user.Email},<br/><br/>" +
-           "Bem-vindo ao Quer Pagar Quanto! Estamos felizes em tê-lo conosco.<br/><br/>" +
-           "Para garantir que você receba os avisos de preços do nosso sistema, por favor, marque este e-mail como \"Não lixo eletrônico\".<br/>" +
-           "Não se preocupe, nós não enviaremos e-mails de promoção ou similares, e seus dados não serão repassados a terceiros.<br/><br/>" +
-           "Atenciosamente,<br/>" +
-           "Equipe Quer Pagar Quanto";
+                    try
+                    {
+                        var subject = "Bem-vindo ao Quer Pagar Quanto!";
+                        var body = $"Olá {user.Email},<br/><br/>" +
+               "Bem-vindo ao Quer Pagar Quanto! Estamos felizes em tê-lo conosco.<br/><br/>" +
+               "Para garantir que você receba os avisos de preços do nosso sistema, por favor, marque este e-mail como \"Não lixo eletrônico\".<br/>" +
+               "Não se preocupe, nós não enviaremos e-mails de promoção ou similares, e seus dados não serão repassados a terceiros.<br/><br/>" +
+               "Atenciosamente,<br/>" +
+               "Equipe Quer Pagar Quanto";
 
-                    await SendEmail(subject, body, user.Id);
+                        await SendEmail(subject, body, user.Id);
 
-                    string logMessage = $"E-mail de boas-vindas enviado para {user.Email}";
-                    await AddLogEntryAsync(LogType.EmailSent, logMessage);
-
-                    user.WelcomeEmailSent = true;
-
-                    await context.SaveChangesAsync();
+                        string logMessage = $"E-mail de boas-vindas enviado para {user.Email}";
+                        await AddLogEntryAsync(LogType.EmailSent, logMessage);
+                        user.WelcomeEmailSent = true;
+                        await context.SaveChangesAsync();
+                    }
+                    catch (Exception ex)
+                    {
+                        string logMessage = $"Erro ao enviar e-mail para {user.Email} {ex.ToString()}";
+                        await AddLogEntryAsync(LogType.EmailSent, logMessage);
+                        await context.SaveChangesAsync();
+                    }
                 }
             }
         }
-
 
         public static async Task NotifyUsersWithWelcomeWhatsappAsync()
         {
