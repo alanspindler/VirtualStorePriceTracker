@@ -21,3 +21,12 @@
 /.vs/VirtualStoresPriceTracker/v17
 *.v2
 /.vs/VirtualStoresPriceTracker/v17/.suo
+/VirtualStorePriceTracker/bin/Debug/net8.0/.playwright
+/VirtualStorePriceTracker/bin/Debug/net8.0/runtimes/unix/lib/net6.0
+/VirtualStorePriceTracker/bin/Debug/net8.0/runtimes/win/lib/net6.0
+/VirtualStorePriceTracker/bin/Debug/net8.0/runtimes
+/VirtualStorePriceTracker/bin/Debug/net8.0
+/VirtualStorePriceTracker/bin/Release/net8.0
+/VirtualStorePriceTracker/obj/Debug
+/VirtualStorePriceTracker/obj/Release
+/VirtualStorePriceTracker/obj
