@@ -30,3 +30,7 @@
 /VirtualStorePriceTracker/obj/Debug
 /VirtualStorePriceTracker/obj/Release
 /VirtualStorePriceTracker/obj
+/AirlinesPriceTracker
+/Shared/bin/Debug/net8.0
+/Shared/obj/Debug/net8.0
+/Shared/obj
