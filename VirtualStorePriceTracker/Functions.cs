@@ -335,7 +335,9 @@ namespace Functions
 
             if (priceElement != null)
             {
+                priceElement = priceElement.Replace("ou", "").Trim();
                 priceElement = priceElement.Replace("R$", "").Trim();
+                priceElement = priceElement.Replace(".", "").Trim();                
 
                 if (double.TryParse(priceElement, out double price))
                 {
