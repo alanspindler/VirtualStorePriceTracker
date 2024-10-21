@@ -325,11 +325,9 @@ namespace Functions
             {
                 int elements = await page.Locator(LabelMagazineLuizaPrice).CountAsync();
                 if (elements > 0)
-                {
-                    elements = elements - 1;
-                    string elementsTexto = elements.ToString();
-                    LabelMagazineLuizaPrice = LabelMagazineLuizaPrice + ">> nth = " + elementsTexto;
-                    priceElement = await page.Locator(LabelMagazineLuizaPrice).TextContentAsync();
+                {                    
+                    ILocator priceElementFiltrado = page.Locator(LabelMagazineLuizaPrice).Filter(new() { HasTextString = "ou R$" }).Nth(0);
+                    priceElement = await priceElementFiltrado.InnerTextAsync();
                 }
             }
 
