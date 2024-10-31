@@ -326,15 +326,16 @@ namespace Functions
                 int elements = await page.Locator(LabelMagazineLuizaPrice).CountAsync();
                 if (elements > 0)
                 {                    
-                    ILocator priceElementFiltrado = page.Locator(LabelMagazineLuizaPrice).Filter(new() { HasTextString = "ou R$" }).Nth(0);
+                    ILocator priceElementFiltrado = page.Locator(LabelMagazineLuizaPrice);
                     priceElement = await priceElementFiltrado.InnerTextAsync();
+                    int startIndex = priceElement.IndexOf("R$") + 3; 
+                    int endIndex = priceElement.IndexOf(" no Pix");
+                    priceElement = priceElement.Substring(startIndex, endIndex - startIndex).Trim();
                 }
             }
 
             if (priceElement != null)
-            {
-                priceElement = priceElement.Replace("ou", "").Trim();
-                priceElement = priceElement.Replace("R$", "").Trim();
+            {                
                 priceElement = priceElement.Replace(".", "").Trim();                
 
                 if (double.TryParse(priceElement, out double price))
@@ -676,7 +677,7 @@ namespace Functions
         public static async Task UpdateProductPrices()
         {
             var playwright = await Playwright.CreateAsync();
-            var browser = await playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions { Headless = true });
+            var browser = await playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions { Headless = true});
             var context = await browser.NewContextAsync(new BrowserNewContextOptions
             {
                 UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.4692.99 Safari/537.36"
