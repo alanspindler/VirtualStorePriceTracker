@@ -297,7 +297,7 @@ namespace Functions
             string? priceElement = null;
             var previousElementXPath = LabelPichauPrice;
             var previousElement = page.Locator(previousElementXPath);
-            var priceElementXPath = previousElementXPath + "/following-sibling::div";
+            var priceElementXPath = previousElementXPath + "/following-sibling::div >> nth = 0";
             var priceElementPichau = page.Locator(priceElementXPath);
             int elements = await priceElementPichau.CountAsync();
             if (elements > 0)
@@ -676,7 +676,7 @@ namespace Functions
         public static async Task UpdateProductPrices()
         {
             var playwright = await Playwright.CreateAsync();
-            var browser = await playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions { Headless = true });
+            var browser = await playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions { Headless = false });
             var context = await browser.NewContextAsync(new BrowserNewContextOptions
             {
                 UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.4692.99 Safari/537.36"
