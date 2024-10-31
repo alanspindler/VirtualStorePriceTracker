@@ -19,7 +19,7 @@ namespace PageObjects
         public static string LabelPichauPrice = "//span[text()='à vista']";
         public static string LabelPichauProductName = "[data-cy='product-page-title']";
 
-        public static string LabelMagazineLuizaPrice = "[data-testid=price-value]";
+        public static string LabelMagazineLuizaPrice = "[data-testid=showcase-price]";
         public static string LabelMagazineLuizaProductName = "[data-testid=heading-product-title]";
         public static string LabelMagazineLuizaProdutoNaoDisponivel = "[data-testid=let-me-know-title]";
 
