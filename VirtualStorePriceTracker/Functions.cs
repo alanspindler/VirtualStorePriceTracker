@@ -11,8 +11,12 @@ using System.Linq.Expressions;
 
 namespace Functions
 {
+
     public class Functions : PageObjects.PageObjects
     {
+
+        private static string AplicationFolder = string.Empty;
+
         public enum Store
         {
             Amazon = 1,
@@ -386,8 +390,6 @@ namespace Functions
 
             if (priceElement != null)
             {
-                //priceElement = priceElement.Replace(",", ".").Trim();
-
                 if (double.TryParse(priceElement, out double price))
                 {
                     if (price == 0)
@@ -1005,7 +1007,7 @@ namespace Functions
             using var dbcontext = new AppDbContext();
             var executionLogs = dbcontext.ExecutionLog
                 .OrderByDescending(log => log.Id)
-                .Take(10)
+                .Take(5)
                 .ToList();
 
             if (executionLogs.All(log => log.Status == "ERROR"))
@@ -1042,6 +1044,42 @@ namespace Functions
             Process.Start(processStartInfo);
             Process.GetCurrentProcess().Kill();
         }
+        public string Aplication_Folder
+        {
+            get
+            {
+                if (string.IsNullOrEmpty(AplicationFolder))
+                {
+                    //Quando testar local
+                    //diretorioAplicacao = Path.GetFullPath(@"..\..\..\bin\Debug");
+                    //Quando testar no Azure
+                    AplicationFolder = Path.GetFullPath(@"..\..\..\bin\Release");
+                }
+                return AplicationFolder;
+            }
+        }
+
+        public string CreateFolder(string nomePasta)
+        {            
+            var nomeArquivo = Aplication_Folder + $"\\{nomePasta}";
+            if (!Directory.Exists(nomeArquivo))
+            {
+                Directory.CreateDirectory(nomeArquivo);
+            }
+            return nomeArquivo;
+        }
+
+        public async Task TakeScreenshot(IPage page)
+        {
+            CreateFolder("TestScreenShots");
+                        
+            string timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+
+            string screenshotPath = $"{Aplication_Folder}\\TestScreenShots\\screenshot_{timestamp}.png";
+
+            await page.ScreenshotAsync(new PageScreenshotOptions { Path = screenshotPath });
+        }
+
     }
 }
 
