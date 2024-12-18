@@ -277,11 +277,20 @@ namespace Functions
 
         public static async Task<double?> GetPricePlaystation(IPage page, string url)
         {
+            await page.WaitForTimeoutAsync(2000);
             string? priceElement = null;
-            int elements = await page.Locator(LabelPlaystationPrice).CountAsync();
-            if (elements > 0)
+            var locator = page.Locator(LabelPlaystationPrice);
+            if (await locator.IsVisibleAsync())
             {
-                priceElement = await page.Locator(LabelPlaystationPrice).TextContentAsync();
+                try
+                {
+                    priceElement = await locator.InnerTextAsync();                    
+                }
+                catch (Exception ex)
+                {
+                    await TakeScreenshot(page);
+                    throw;
+                }
             }
 
             if (priceElement != null)
@@ -297,25 +306,33 @@ namespace Functions
         }
 
         public static async Task<double?> GetPricePichau(IPage page, string url)
-        {
-            string? priceElement = null;
-            var previousElementXPath = LabelPichauPrice;
-            var previousElement = page.Locator(previousElementXPath);
-            var priceElementXPath = previousElementXPath + "/following-sibling::div >> nth = 0";
-            var priceElementPichau = page.Locator(priceElementXPath);
-            int elements = await priceElementPichau.CountAsync();
-            if (elements > 0)
+        {            
+            int elements404 = await page.Locator(LabelPichauErro404).CountAsync();
+            if (elements404 > 0)
             {
-                priceElement = await priceElementPichau.TextContentAsync();
+                return null;
             }
-
-            if (priceElement != null)
+            else
             {
-                priceElement = priceElement.Replace("R$", "").Trim();
-
-                if (double.TryParse(priceElement, out double price))
+                string? priceElement = null;
+                var previousElementXPath = LabelPichauPrice;
+                var previousElement = page.Locator(previousElementXPath);
+                var priceElementXPath = previousElementXPath + "/following-sibling::div >> nth = 0";
+                var priceElementPichau = page.Locator(priceElementXPath);
+                int elements = await priceElementPichau.CountAsync();
+                if (elements > 0)
                 {
-                    return price;
+                    priceElement = await priceElementPichau.TextContentAsync();
+                }
+
+                if (priceElement != null)
+                {
+                    priceElement = priceElement.Replace("R$", "").Trim();
+
+                    if (double.TryParse(priceElement, out double price))
+                    {
+                        return price;
+                    }
                 }
             }
             return null;
@@ -868,10 +885,10 @@ namespace Functions
 
                 foreach (var user in usersWithoutWelcomeEmail)
                 {
-                    WhatsAppApiService.SendWhatsappMessage(user.Phone, "cadastro_aplicativo");
+                    string returnMessage = WhatsAppApiService.SendWhatsappMessage(user.Phone, "cadastro_aplicativo");
                     user.WelcomeWhatsappSent = true;
                     await context.SaveChangesAsync();
-                    await AddLogEntryAsync(LogType.WhatsappMessageSent, "Mensagem de Cadastro no Aplicativo");
+                    await AddLogEntryAsync(LogType.WhatsappMessageSent, "Mensagem de Cadastro no Aplicativo" + returnMessage);
                 }
             }
         }
@@ -1044,22 +1061,19 @@ namespace Functions
             Process.Start(processStartInfo);
             Process.GetCurrentProcess().Kill();
         }
-        public string Aplication_Folder
+        public static string Aplication_Folder
         {
             get
             {
                 if (string.IsNullOrEmpty(AplicationFolder))
-                {
-                    //Quando testar local
-                    //diretorioAplicacao = Path.GetFullPath(@"..\..\..\bin\Debug");
-                    //Quando testar no Azure
+                {                   
                     AplicationFolder = Path.GetFullPath(@"..\..\..\bin\Release");
                 }
                 return AplicationFolder;
             }
         }
 
-        public string CreateFolder(string nomePasta)
+        public static string CreateFolder(string nomePasta)
         {            
             var nomeArquivo = Aplication_Folder + $"\\{nomePasta}";
             if (!Directory.Exists(nomeArquivo))
@@ -1069,7 +1083,7 @@ namespace Functions
             return nomeArquivo;
         }
 
-        public async Task TakeScreenshot(IPage page)
+        public static async Task TakeScreenshot(IPage page)
         {
             CreateFolder("TestScreenShots");
                         

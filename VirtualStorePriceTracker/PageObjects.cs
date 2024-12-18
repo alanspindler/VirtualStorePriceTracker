@@ -16,6 +16,7 @@ namespace PageObjects
         public static string LabelPlaystationPrice = "[data-qa='mfeCtaMain#offer0#finalPrice']";
         public static string LabelPlaystationProductName = "[data-qa='mfe-game-title#name']";
 
+        public static string LabelPichauErro404 = "text=Página não encontrada";
         public static string LabelPichauPrice = "//span[text()='à vista']";
         public static string LabelPichauProductName = "[data-cy='product-page-title']";
 
