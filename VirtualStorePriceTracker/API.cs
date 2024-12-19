@@ -27,11 +27,11 @@ namespace API
 
     public class TokenService
     {
-         private AppDbContext _context;        
+        private AppDbContext _context;
         public static string GetDecryptedAccessToken()
         {
             var _context = new AppDbContext();
-            
+
             var configEntry = _context.Config
                                       .Where(c => c.Key == "AccessToken")
                                       .Select(c => c.Value)
@@ -44,7 +44,7 @@ namespace API
 
             throw new Exception("Access token not found or is empty in the database.");
         }
-        
+
         private static string DecryptToken(string encryptedToken)
         {
             using (Aes aesAlg = Aes.Create())
@@ -141,7 +141,7 @@ namespace API
     }
 
     public class WhatsAppApiService(AppDbContext context)
-    {        
+    {
         public static string SendWhatsappMessage(string phoneNumber, string templateName, string parameter1 = null, string parameter2 = null, string parameter3 = null)
         {
             string? AccessToken = TokenService.GetDecryptedAccessToken();
@@ -150,7 +150,7 @@ namespace API
 
             request.AddHeader("Authorization", $"Bearer {AccessToken}");
             request.AddHeader("Content-Type", "application/json");
-            
+
             var body = new
             {
                 messaging_product = "whatsapp",
@@ -166,7 +166,7 @@ namespace API
                     components = new List<object>()
                 }
             };
-            
+
             var bodyComponents = new List<object>();
 
             if (parameter1 != null)
