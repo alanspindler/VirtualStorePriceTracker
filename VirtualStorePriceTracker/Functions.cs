@@ -786,7 +786,7 @@ namespace Functions
                 var query = (from p in context.Product
                              join up in context.User_Product on p.Id equals up.Product_id
                              join u in context.User on up.User_id equals u.Id
-                             where p.Current_Price < up.Price
+                             where p.Current_Price < up.Price && p.Active
                              select new
                              {
                                  Product = p,
