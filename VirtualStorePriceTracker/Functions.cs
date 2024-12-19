@@ -7,7 +7,6 @@ using System.Text.RegularExpressions;
 using Database;
 using System.Diagnostics;
 using API;
-using System.Linq.Expressions;
 
 namespace Functions
 {
@@ -284,7 +283,7 @@ namespace Functions
             {
                 try
                 {
-                    priceElement = await locator.InnerTextAsync();                    
+                    priceElement = await locator.InnerTextAsync();
                 }
                 catch (Exception ex)
                 {
@@ -306,7 +305,7 @@ namespace Functions
         }
 
         public static async Task<double?> GetPricePichau(IPage page, string url)
-        {            
+        {
             int elements404 = await page.Locator(LabelPichauErro404).CountAsync();
             if (elements404 > 0)
             {
@@ -346,18 +345,18 @@ namespace Functions
             {
                 int elements = await page.Locator(LabelMagazineLuizaPrice).CountAsync();
                 if (elements > 0)
-                {                    
+                {
                     ILocator priceElementFiltrado = page.Locator(LabelMagazineLuizaPrice);
                     priceElement = await priceElementFiltrado.InnerTextAsync();
-                    int startIndex = priceElement.IndexOf("R$") + 3; 
+                    int startIndex = priceElement.IndexOf("R$") + 3;
                     int endIndex = priceElement.IndexOf(" no Pix");
                     priceElement = priceElement.Substring(startIndex, endIndex - startIndex).Trim();
                 }
             }
 
             if (priceElement != null)
-            {                
-                priceElement = priceElement.Replace(".", "").Trim();                
+            {
+                priceElement = priceElement.Replace(".", "").Trim();
 
                 if (double.TryParse(priceElement, out double price))
                 {
@@ -696,7 +695,7 @@ namespace Functions
         public static async Task UpdateProductPrices()
         {
             var playwright = await Playwright.CreateAsync();
-            var browser = await playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions { Headless = true});
+            var browser = await playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions { Headless = true });
             var context = await browser.NewContextAsync(new BrowserNewContextOptions
             {
                 UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.4692.99 Safari/537.36"
@@ -1033,7 +1032,6 @@ namespace Functions
             }
         }
 
-        // Método para reiniciar a aplicação
         private static void RestartApplication()
         {
 
@@ -1061,12 +1059,13 @@ namespace Functions
             Process.Start(processStartInfo);
             Process.GetCurrentProcess().Kill();
         }
+
         public static string Aplication_Folder
         {
             get
             {
                 if (string.IsNullOrEmpty(AplicationFolder))
-                {                   
+                {
                     AplicationFolder = Path.GetFullPath(@"..\..\..\bin\Release");
                 }
                 return AplicationFolder;
@@ -1074,7 +1073,7 @@ namespace Functions
         }
 
         public static string CreateFolder(string nomePasta)
-        {            
+        {
             var nomeArquivo = Aplication_Folder + $"\\{nomePasta}";
             if (!Directory.Exists(nomeArquivo))
             {
@@ -1086,14 +1085,13 @@ namespace Functions
         public static async Task TakeScreenshot(IPage page)
         {
             CreateFolder("TestScreenShots");
-                        
+
             string timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
 
             string screenshotPath = $"{Aplication_Folder}\\TestScreenShots\\screenshot_{timestamp}.png";
 
             await page.ScreenshotAsync(new PageScreenshotOptions { Path = screenshotPath });
         }
-
     }
 }
 

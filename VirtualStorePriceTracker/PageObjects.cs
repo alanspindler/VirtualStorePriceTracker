@@ -1,8 +1,4 @@
-﻿
-using Azure;
-using System.IO;
-
-namespace PageObjects
+﻿namespace PageObjects
 {
     public class PageObjects
     {
