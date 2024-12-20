@@ -68,7 +68,7 @@ namespace Functions
                 string FormatedPrice = null;
                 if (AppId != null)
                 {
-                    price = await API.StemAPI.GetSteamPrice(AppId.ToString());
+                    price = await SteamAPI.GetSteamPrice(AppId.ToString());
                     if (price != null)
                     {
                         FormatedPrice = price.ToString();
@@ -163,7 +163,7 @@ namespace Functions
                 int? AppID = returnSteamIdapp(productUrl);
                 if (AppID != null)
                 {
-                    textProductName = await API.StemAPI.GetSteamAppName(AppID.ToString());
+                    textProductName = await SteamAPI.GetSteamAppName(AppID.ToString());
                     return textProductName;
                 }
             }

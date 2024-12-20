@@ -68,7 +68,7 @@ namespace API
         }
     }
 
-    public static class StemAPI
+    public static class SteamAPI
     {
         public static async Task<double?> GetSteamPrice(string appId)
         {
