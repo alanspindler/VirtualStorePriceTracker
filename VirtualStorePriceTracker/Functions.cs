@@ -109,9 +109,6 @@ namespace Functions
             var jsonObject = JsonDocument.Parse(scriptContent).RootElement;
             return jsonObject.GetProperty("name").GetString();
         }
-
-
-
         private static async Task<double?> GetPriceSteam(string url)
         {
             int? appId = returnSteamIdapp(url);
