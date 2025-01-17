@@ -42,193 +42,91 @@ namespace Functions
 
         public static async Task<double?> GetProductPrice(IPage page, string url, Store store)
         {
-            double? price = null;
-
-            if (store == Store.Amazon)
+            return store switch
             {
-                price = await GetPriceAmazon(page, url);
-                return price;
-            }
-
-            else if (store == Store.Kabum)
+                Store.Amazon => await GetPriceAmazon(page, url),
+                Store.Kabum => await GetPriceKabum(page, url),
+                Store.PSStore => await GetPricePlaystation(page, url),
+                Store.Steam => await GetPriceSteam(url),
+                Store.Pichau => await GetPricePichau(page, url),
+                Store.Magazine_Luiza => await GetPriceMagazineLuiza(page, url),
+                Store.Terabyte_Shop => await GetPriceTeraByteShop(page, url),
+                Store.Nuuvem => await GetPriceNuuvem(page, url),
+                Store.GreenManGaming => await GetPriceGreenManGaming(page, url),
+                Store.GOG => await GetPriceGOG(page, url),
+                Store.Epic => await GetPriceEpic(page, url),
+                Store.Xbox => await GetPriceXbox(page, url),
+                _ => null,
+            };
+        }
+        public static async Task<string> GetProductName(IPage page, string productUrl, Store store)
+        {
+            return store switch
             {
-                price = await GetPriceKabum(page, url);
-                return price;
-            }
+                Store.Amazon => await page.Locator(LabelAmazonProductName).TextContentAsync(),
+                Store.Kabum => await GetKabumProductName(page),
+                Store.PSStore => await page.Locator(LabelPlaystationProductName).TextContentAsync(),
+                Store.Steam => await GetSteamProductName(productUrl),
+                Store.Pichau => await page.Locator(LabelPichauProductName).TextContentAsync(),
+                Store.Magazine_Luiza => await page.Locator(LabelMagazineLuizaProductName).TextContentAsync(),
+                Store.Terabyte_Shop => await page.Locator(LabelTerabyteProductName).TextContentAsync(),
+                Store.Nuuvem => await page.Locator(LabelNuuvemProductName).TextContentAsync(),
+                Store.GreenManGaming => await GetGreenManGamingProductName(page),
+                Store.GOG => await page.Locator(LabelGOGProductName).TextContentAsync(),
+                Store.Epic => await GetEpicProductName(page),
+                Store.Xbox => await page.Locator(LabelXboxProductName).TextContentAsync(),
+                _ => null,
+            };
+        }
 
-            else if (store == Store.PSStore)
+        private static async Task<string> GetKabumProductName(IPage page)
+        {
+            int elements = await page.Locator(LabelKabumProductName).CountAsync();
+            return elements > 0 ? await page.Locator(LabelKabumProductName).TextContentAsync() : null;
+        }
+
+        private static async Task<string> GetSteamProductName(string productUrl)
+        {
+            int? appId = returnSteamIdapp(productUrl);
+            return appId != null ? await SteamAPI.GetSteamAppName(appId.ToString()) : null;
+        }
+
+        private static async Task<string> GetGreenManGamingProductName(IPage page)
+        {
+            int elements = await page.Locator(LabelGreenManGamingProductName).CountAsync();
+            if (elements > 0)
             {
-                price = await GetPricePlaystation(page, url);
-                return price;
+                elements -= 1;
+                string label = $"{LabelGreenManGamingProductName} >> nth = {elements}";
+                return await page.Locator(label).TextContentAsync();
             }
-
-            else if (store == Store.Steam)
-            {
-                int? AppId = returnSteamIdapp(url);
-                string FormatedPrice = null;
-                if (AppId != null)
-                {
-                    price = await SteamAPI.GetSteamPrice(AppId.ToString());
-                    if (price != null)
-                    {
-                        FormatedPrice = price.ToString();
-                    }
-                    if (double.TryParse(FormatedPrice, out double DecimalPrice))
-                    {
-                        return DecimalPrice;
-                    }
-                    return null;
-                }
-            }
-
-            else if (store == Store.Pichau)
-            {
-                price = await GetPricePichau(page, url);
-                return price;
-            }
-
-            else if (store == Store.Magazine_Luiza)
-            {
-                price = await GetPriceMagazineLuiza(page, url);
-                return price;
-            }
-
-            else if (store == Store.Terabyte_Shop)
-            {
-                price = await GetPriceTeraByteShop(page, url);
-                return price;
-            }
-
-            else if (store == Store.Nuuvem)
-            {
-                price = await GetPriceNuuvem(page, url);
-                return price;
-            }
-
-            else if (store == Store.GreenManGaming)
-            {
-                price = await GetPriceGreenManGaming(page, url);
-                return price;
-            }
-
-            else if (store == Store.GOG)
-            {
-                price = await GetPriceGOG(page, url);
-                return price;
-            }
-
-            else if (store == Store.Epic)
-            {
-                price = await GetPriceEpic(page, url);
-                return price;
-            }
-
-            else if (store == Store.Xbox)
-            {
-                price = await GetPriceXbox(page, url);
-                return price;
-            }
-
             return null;
         }
 
-        public static async Task<string> GetProductName(IPage page, string productUrl, Store store)
+        private static async Task<string> GetEpicProductName(IPage page)
         {
-            string? textProductName;
-            if (store == Store.Amazon)
+            var scriptContent = await page.Locator(ScriptEpic).InnerTextAsync();
+            var jsonObject = JsonDocument.Parse(scriptContent).RootElement;
+            return jsonObject.GetProperty("name").GetString();
+        }
+
+
+
+        private static async Task<double?> GetPriceSteam(string url)
+        {
+            int? appId = returnSteamIdapp(url);
+            if (appId != null)
             {
-                textProductName = await page.Locator(LabelAmazonProductName).TextContentAsync();
-                return textProductName;
-            }
-            else if (store == Store.Kabum)
-            {
-                int elements = await page.Locator(LabelKabumProductName).CountAsync();
-                if (elements > 0)
+                double? price = await SteamAPI.GetSteamPrice(appId.ToString());
+                if (price != null)
                 {
-                    textProductName = await page.Locator(LabelKabumProductName).TextContentAsync();
-                    return textProductName;
-                }
-                else
-                {
-                    return null;
-                }
-            }
-            else if (store == Store.PSStore)
-            {
-                textProductName = await page.Locator(LabelPlaystationProductName).TextContentAsync();
-                return textProductName;
-            }
-            else if (store == Store.Steam)
-            {
-                int? AppID = returnSteamIdapp(productUrl);
-                if (AppID != null)
-                {
-                    textProductName = await SteamAPI.GetSteamAppName(AppID.ToString());
-                    return textProductName;
+                    string formattedPrice = price.ToString();
+                    if (double.TryParse(formattedPrice, out double decimalPrice))
+                    {
+                        return decimalPrice;
+                    }
                 }
             }
-            else if (store == Store.Pichau)
-            {
-                textProductName = await page.Locator(LabelPichauProductName).TextContentAsync();
-                return textProductName;
-            }
-
-            else if (store == Store.Magazine_Luiza)
-            {
-                textProductName = await page.Locator(LabelMagazineLuizaProductName).TextContentAsync();
-                return textProductName;
-            }
-
-            else if (store == Store.Terabyte_Shop)
-            {
-                textProductName = await page.Locator(LabelTerabyteProductName).TextContentAsync();
-                return textProductName;
-            }
-
-            else if (store == Store.Nuuvem)
-            {
-                textProductName = await page.Locator(LabelNuuvemProductName).TextContentAsync();
-                return textProductName;
-            }
-
-            else if (store == Store.GreenManGaming)
-            {
-                int elements = await page.Locator(LabelGreenManGamingProductName).CountAsync();
-                if (elements > 0)
-                {
-                    elements = elements - 1;
-                    LabelGreenManGamingProductName = LabelGreenManGamingProductName + " >> nth = " + elements.ToString();
-                    textProductName = await page.Locator(LabelGreenManGamingProductName).TextContentAsync();
-                    return textProductName;
-                }
-            }
-
-            else if (store == Store.GOG)
-            {
-                textProductName = await page.Locator(LabelGOGProductName).TextContentAsync();
-                return textProductName;
-            }
-
-            else if (store == Store.Epic)
-            {
-                var scriptContent = await page.Locator(ScriptEpic).InnerTextAsync();
-                var jsonObject = JsonDocument.Parse(scriptContent).RootElement;
-                textProductName = jsonObject.GetProperty("name").GetString();
-                return textProductName;
-            }
-
-            else if (store == Store.GOG)
-            {
-                textProductName = await page.Locator(LabelGOGProductName).TextContentAsync();
-                return textProductName;
-            }
-
-            else if (store == Store.Xbox)
-            {
-                textProductName = await page.Locator(LabelXboxProductName).TextContentAsync();
-                return textProductName;
-            }
-
             return null;
         }
 
