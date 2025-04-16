@@ -181,8 +181,7 @@ namespace Functions
                     priceElement = await locator.InnerTextAsync();
                 }
                 catch (Exception ex)
-                {
-                    await TakeScreenshot(page);
+                {                    
                     throw;
                 }
             }
@@ -587,8 +586,8 @@ namespace Functions
             }
         }
 
-        public static async Task<bool> IsCaptchaPresent(IPage page)
-        {            
+        public async Task<bool> IsCaptchaPresent(IPage page)
+        {
             var captchaSelectors = new[]
             {
         "iframe[src*='captcha']",
@@ -597,19 +596,25 @@ namespace Functions
         "#captcha",
         "[id*='captcha']",
         "[class*='captcha']",
-        "text=Não sou um robô",
-        "text=Verifique que você não é um robô",
-        "text=Complete o CAPTCHA"
+        "form[action*='validateCaptcha']",
+        "input#captchacharacters",
+        "img[src*='captcha']",
+        "text=Escreva os caracteres que você vê nesta imagem",
+        "text=Digitar caracteres",
+        "text=Tentar uma imagem diferente"
     };
 
             foreach (var selector in captchaSelectors)
             {
                 var element = await page.QuerySelectorAsync(selector);
                 if (element != null)
-                {
                     return true;
-                }
             }
+
+            // Verifica se há o comentário oculto da Amazon na página
+            var content = await page.ContentAsync();
+            if (content.Contains("To discuss automated access to Amazon data please contact api-services-support@amazon.com"))
+                return true;
 
             return false;
         }
@@ -671,17 +676,16 @@ namespace Functions
                     {
                         foreach (var product in productsSubset)
                         {
-                      
-                            bool captchaPresent = await IsCaptchaPresent(page);                      
+                            string url = product.Url;
+                            await page.GotoAsync(url);
+                            var functions = new Functions();
+                            bool captchaPresent = await functions.IsCaptchaPresent(page);
+                            Store store = (Store)product.Store_Id;
                             if (!captchaPresent)
                             {
-                                string url = product.Url;
-                                await page.GotoAsync(url);
-                                Store store = (Store)product.Store_Id;                                
                                 double? price = await GetProductPrice(page, url, store);
                                 bool unavailable = price == null;
                                 DateTime? last_Captcha_Detected_At = product.Last_Captcha_Detected_At;
-
                                 productRepository.AlterProduct(product.Id, product.Name, product.Url, product.Store_Id, price, unavailable, DateTime.Now, last_Captcha_Detected_At);
 
                                 if (price != null)
@@ -689,15 +693,18 @@ namespace Functions
                                     string logMessage = $"O Produto de ID {product.Id} foi atualizado com o preço {price}";
                                     await AddLogEntryAsync(LogType.ProductPriceUpdate, logMessage);
                                 }
+                                else
+                                {
+                                    await TakeScreenshot(page, product.Name.ToString());
+                                }
                             }
 
                             else
-                            {
-                                string url = product.Url;                                
-                                Store store = (Store)product.Store_Id;
+                            {                                
                                 double? price = product.Current_Price;
                                 bool unavailable = false;
                                 productRepository.AlterProduct(product.Id, product.Name, product.Url, product.Store_Id, price, unavailable, DateTime.Now, DateTime.Now);
+                                
                             }
 
                         }
@@ -1021,13 +1028,14 @@ namespace Functions
             return nomeArquivo;
         }
 
-        public static async Task TakeScreenshot(IPage page)
+        public static async Task TakeScreenshot(IPage page, string filename)
         {
+            filename = filename.Replace(":", " ");
             CreateFolder("TestScreenShots");
 
             string timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
 
-            string screenshotPath = $"{Aplication_Folder}\\TestScreenShots\\screenshot_{timestamp}.png";
+            string screenshotPath = $"{Aplication_Folder}\\TestScreenShots\\{filename}.png";
 
             await page.ScreenshotAsync(new PageScreenshotOptions { Path = screenshotPath });
         }
