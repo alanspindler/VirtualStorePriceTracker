@@ -176,15 +176,17 @@ namespace Database
         {
             var productsPendingPriceUpdate = _context.Product
                 .Where(p => p.Name != null &&
-                    (p.Last_Checked_Date == null || p.Last_Checked_Date < DateTime.Now.AddMinutes(-30) || (p.Current_Price == null)) &&
+                    (p.Last_Checked_Date == null || p.Last_Checked_Date < DateTime.Now.AddMinutes(-30) || (p.Current_Price == null && p.Unavailable == false)) &&
                     p.Active == true)
-                .OrderBy(p => p.Last_Checked_Date)
+                .OrderBy(p => p.Last_Checked_Date == null ? 0 : 1) // prioriza os null
+                .ThenBy(p => p.Last_Checked_Date) // ordena os demais por data
                 .Take(180)
                 .GroupBy(p => p.Name)
                 .ToDictionary(g => g.Key, g => g.ToList());
 
             return productsPendingPriceUpdate;
         }
+
 
         public List<string> GetShortenedAmazonUrls()
         {
