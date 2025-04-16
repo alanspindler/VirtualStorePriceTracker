@@ -14,6 +14,7 @@ namespace Database
         public bool Unavailable { get; set; }
         public DateTime? Last_Checked_Date { get; set; }
         public bool Active { get; set; }
+        public DateTime? Last_Captcha_Detected_At { get; set; }
     }
 
     public class User
@@ -141,7 +142,7 @@ namespace Database
             _context.SaveChanges();
         }
 
-        public void AlterProduct(int id, string newName, string NewUrl, int NewStore_Id, double? NewCurrent_Price, bool NewUnavailable, DateTime NewLast_Checked_Date)
+        public void AlterProduct(int id, string newName, string NewUrl, int NewStore_Id, double? NewCurrent_Price, bool NewUnavailable, DateTime NewLast_Checked_Date, DateTime? NewLast_Captcha_Presente )
         {
             var product = _context.Product.FirstOrDefault(p => p.Id == id);
             if (product != null)
@@ -152,6 +153,7 @@ namespace Database
                 product.Current_Price = NewCurrent_Price;
                 product.Unavailable = NewUnavailable;
                 product.Last_Checked_Date = NewLast_Checked_Date;
+                product.Last_Captcha_Detected_At = NewLast_Captcha_Presente;
                 _context.SaveChanges();
 
                 _context.Database.ExecuteSqlRaw("EXEC CheckAndInsertPriceHistory @ProductId = {0}", id);
@@ -174,7 +176,7 @@ namespace Database
         {
             var productsPendingPriceUpdate = _context.Product
                 .Where(p => p.Name != null &&
-                    (p.Last_Checked_Date == null || p.Last_Checked_Date < DateTime.Now.AddMinutes(-30) || (p.Current_Price == null && p.Unavailable == false)) &&
+                    (p.Last_Checked_Date == null || p.Last_Checked_Date < DateTime.Now.AddMinutes(-30) || (p.Current_Price == null)) &&
                     p.Active == true)
                 .OrderBy(p => p.Last_Checked_Date)
                 .Take(180)

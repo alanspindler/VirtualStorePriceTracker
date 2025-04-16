@@ -541,7 +541,7 @@ namespace Functions
                         {
                             Unavaliable = true;
                         }
-                        productRepository.AlterProduct(product.Id, Name, product.Url, product.Store_Id, product.Current_Price, Unavaliable, DateTime.Now);
+                        productRepository.AlterProduct(product.Id, Name, product.Url, product.Store_Id, product.Current_Price, Unavaliable, DateTime.Now, product.Last_Captcha_Detected_At);
                         if (product.Name != null)
                         {
                             string logMessage = $"O Produto de ID {product.Id} foi atualizado com o nome {product.Name}";
@@ -586,6 +586,34 @@ namespace Functions
                 await browser.DisposeAsync();
             }
         }
+
+        public static async Task<bool> IsCaptchaPresent(IPage page)
+        {            
+            var captchaSelectors = new[]
+            {
+        "iframe[src*='captcha']",
+        "iframe[src*='recaptcha']",
+        ".g-recaptcha",
+        "#captcha",
+        "[id*='captcha']",
+        "[class*='captcha']",
+        "text=Não sou um robô",
+        "text=Verifique que você não é um robô",
+        "text=Complete o CAPTCHA"
+    };
+
+            foreach (var selector in captchaSelectors)
+            {
+                var element = await page.QuerySelectorAsync(selector);
+                if (element != null)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
 
         public static async Task UpdateProductPrices()
         {
@@ -643,19 +671,35 @@ namespace Functions
                     {
                         foreach (var product in productsSubset)
                         {
-                            string url = product.Url;
-                            await page.GotoAsync(url);
-                            Store store = (Store)product.Store_Id;
-                            double? price = await GetProductPrice(page, url, store);
-                            bool unavailable = price == null;
-
-                            productRepository.AlterProduct(product.Id, product.Name, product.Url, product.Store_Id, price, unavailable, DateTime.Now);
-
-                            if (price != null)
+                      
+                            bool captchaPresent = await IsCaptchaPresent(page);                      
+                            if (!captchaPresent)
                             {
-                                string logMessage = $"O Produto de ID {product.Id} foi atualizado com o preço {price}";
-                                await AddLogEntryAsync(LogType.ProductPriceUpdate, logMessage);
+                                string url = product.Url;
+                                await page.GotoAsync(url);
+                                Store store = (Store)product.Store_Id;                                
+                                double? price = await GetProductPrice(page, url, store);
+                                bool unavailable = price == null;
+                                DateTime? last_Captcha_Detected_At = product.Last_Captcha_Detected_At;
+
+                                productRepository.AlterProduct(product.Id, product.Name, product.Url, product.Store_Id, price, unavailable, DateTime.Now, last_Captcha_Detected_At);
+
+                                if (price != null)
+                                {
+                                    string logMessage = $"O Produto de ID {product.Id} foi atualizado com o preço {price}";
+                                    await AddLogEntryAsync(LogType.ProductPriceUpdate, logMessage);
+                                }
                             }
+
+                            else
+                            {
+                                string url = product.Url;                                
+                                Store store = (Store)product.Store_Id;
+                                double? price = product.Current_Price;
+                                bool unavailable = false;
+                                productRepository.AlterProduct(product.Id, product.Name, product.Url, product.Store_Id, price, unavailable, DateTime.Now, DateTime.Now);
+                            }
+
                         }
                     }
                     finally
@@ -879,7 +923,7 @@ namespace Functions
                             var product = _context.Product.FirstOrDefault(p => p.Url == shortenedUrl);
                             if (product != null)
                             {
-                                productRepository.AlterProduct(product.Id, product.Name, expandedUrl, product.Store_Id, product.Current_Price, product.Unavailable, DateTime.Now);
+                                productRepository.AlterProduct(product.Id, product.Name, expandedUrl, product.Store_Id, product.Current_Price, product.Unavailable, DateTime.Now, product.Last_Captcha_Detected_At);
                             }
                         }
                     }
