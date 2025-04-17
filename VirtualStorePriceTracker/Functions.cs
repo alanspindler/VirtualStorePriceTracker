@@ -703,7 +703,7 @@ namespace Functions
                             {                                
                                 double? price = product.Current_Price;
                                 bool unavailable = false;
-                                productRepository.AlterProduct(product.Id, product.Name, product.Url, product.Store_Id, price, unavailable, DateTime.Now, DateTime.Now);
+                                productRepository.AlterProduct(product.Id, product.Name, product.Url, product.Store_Id, price, unavailable, product.Last_Checked_Date, DateTime.Now);
                                 
                             }
 

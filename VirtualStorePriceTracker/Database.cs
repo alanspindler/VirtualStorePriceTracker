@@ -142,7 +142,7 @@ namespace Database
             _context.SaveChanges();
         }
 
-        public void AlterProduct(int id, string newName, string NewUrl, int NewStore_Id, double? NewCurrent_Price, bool NewUnavailable, DateTime NewLast_Checked_Date, DateTime? NewLast_Captcha_Presente )
+        public void AlterProduct(int id, string newName, string NewUrl, int NewStore_Id, double? NewCurrent_Price, bool NewUnavailable, DateTime? NewLast_Checked_Date, DateTime? NewLast_Captcha_Presente )
         {
             var product = _context.Product.FirstOrDefault(p => p.Id == id);
             if (product != null)
@@ -178,8 +178,8 @@ namespace Database
                 .Where(p => p.Name != null &&
                     (p.Last_Checked_Date == null || p.Last_Checked_Date < DateTime.Now.AddMinutes(-30) || (p.Current_Price == null && p.Unavailable == false)) &&
                     p.Active == true)
-                .OrderBy(p => p.Last_Checked_Date == null ? 0 : 1) // prioriza os null
-                .ThenBy(p => p.Last_Checked_Date) // ordena os demais por data
+                .OrderBy(p => p.Last_Checked_Date == null ? 0 : 1)
+                .ThenBy(p => p.Last_Checked_Date)
                 .Take(180)
                 .GroupBy(p => p.Name)
                 .ToDictionary(g => g.Key, g => g.ToList());
