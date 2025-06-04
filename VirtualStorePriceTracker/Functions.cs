@@ -1,19 +1,17 @@
-﻿using System.Net;
+﻿using API;
+using Database;
+using Microsoft.Playwright;
+using System.Diagnostics;
+using System.Net;
 using System.Net.Mail;
 using System.Text.Json;
-using Microsoft.Playwright;
-using File = System.IO.File;
 using System.Text.RegularExpressions;
-using Database;
-using System.Diagnostics;
-using API;
+using File = System.IO.File;
 
 namespace Functions
 {
-
     public class Functions : PageObjects.PageObjects
     {
-
         private static string AplicationFolder = string.Empty;
 
         public enum Store
@@ -59,6 +57,7 @@ namespace Functions
                 _ => null,
             };
         }
+
         public static async Task<string> GetProductName(IPage page, string productUrl, Store store)
         {
             return store switch
@@ -109,6 +108,7 @@ namespace Functions
             var jsonObject = JsonDocument.Parse(scriptContent).RootElement;
             return jsonObject.GetProperty("name").GetString();
         }
+
         private static async Task<double?> GetPriceSteam(string url)
         {
             int? appId = returnSteamIdapp(url);
@@ -181,7 +181,7 @@ namespace Functions
                     priceElement = await locator.InnerTextAsync();
                 }
                 catch (Exception ex)
-                {                    
+                {
                     throw;
                 }
             }
@@ -490,71 +490,112 @@ namespace Functions
 
         public static async Task FillEmptyProductNames()
         {
-            using var dbcontext = new AppDbContext();
-            var productRepository = new ProductRepository(dbcontext);
-            var playwright = await Playwright.CreateAsync();
-            var browser = await playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions { Headless = true });
-            var context = await browser.NewContextAsync(new BrowserNewContextOptions
-            {
-                UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.4692.99 Safari/537.36"
-            });
+            IPlaywright playwright = null;
+            IBrowser browser = null;
+            IBrowserContext context = null;
 
-            await context.RouteAsync("**/*", async route =>
+            try
             {
-                var request = route.Request;
-                var url = request.Url;
+                using var dbcontext = new AppDbContext();
+                var productRepository = new ProductRepository(dbcontext);
 
-                if (url.EndsWith(".png") || url.EndsWith(".jpg") || url.EndsWith(".jpeg") || url.EndsWith(".gif") ||
-    url.EndsWith(".js") || url.EndsWith(".css") || url.EndsWith(".woff") || url.EndsWith(".woff2") ||
-    url.EndsWith(".ttf") || url.EndsWith(".eot") || url.EndsWith(".mp4") || url.EndsWith(".webm") ||
-    url.EndsWith(".ogg"))
+                playwright = await Playwright.CreateAsync();
+                browser = await playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions { Headless = true });
+                context = await browser.NewContextAsync(new BrowserNewContextOptions
                 {
-                    await route.AbortAsync();
-                    return;
-                }
+                    UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.4692.99 Safari/537.36"
+                });
 
-                await route.ContinueAsync();
-            });
-
-            var groupedProducts = productRepository.GetProductsGroupedByStoreIdWithNullNames();
-
-            foreach (var storeGroup in groupedProducts)
-            {
-                var storeGroupLocal = storeGroup;
-                var page = await context.NewPageAsync();
-
-                try
+                await context.RouteAsync("**/*", async route =>
                 {
-                    foreach (var product in storeGroupLocal.Value)
+                    var url = route.Request.Url;
+
+                    if (url.EndsWith(".png") || url.EndsWith(".jpg") || url.EndsWith(".jpeg") || url.EndsWith(".gif") ||
+                        url.EndsWith(".js") || url.EndsWith(".css") || url.EndsWith(".woff") || url.EndsWith(".woff2") ||
+                        url.EndsWith(".ttf") || url.EndsWith(".eot") || url.EndsWith(".mp4") || url.EndsWith(".webm") ||
+                        url.EndsWith(".ogg"))
                     {
-                        string Url = product.Url;
-                        await page.GotoAsync(Url);
-                        Store store = (Store)product.Store_Id;
-                        string Name = await GetProductName(page, Url, store);
-                        bool Unavaliable = false;
-                        if (Name != null)
+                        await route.AbortAsync();
+                        return;
+                    }
+
+                    await route.ContinueAsync();
+                });
+
+                var groupedProducts = productRepository.GetProductsGroupedByStoreIdWithNullNames();
+
+                foreach (var storeGroup in groupedProducts)
+                {
+                    var storeGroupLocal = storeGroup;
+                    var page = await context.NewPageAsync();
+
+                    try
+                    {
+                        foreach (var product in storeGroupLocal.Value)
                         {
-                            Name = Name.Trim();
-                        }
-                        if (Name is null)
-                        {
-                            Unavaliable = true;
-                        }
-                        productRepository.AlterProduct(product.Id, Name, product.Url, product.Store_Id, product.Current_Price, Unavaliable, DateTime.Now, product.Last_Captcha_Detected_At);
-                        if (product.Name != null)
-                        {
-                            string logMessage = $"O Produto de ID {product.Id} foi atualizado com o nome {product.Name}";
-                            await AddLogEntryAsync(LogType.ProductNameUpdate, logMessage);
+                            try
+                            {
+                                string url = product.Url;
+                                await page.GotoAsync(url);
+
+                                Store store = (Store)product.Store_Id;
+                                string name = await GetProductName(page, url, store);
+
+                                bool unavailable = false;
+                                if (name != null)
+                                {
+                                    name = name.Trim();
+                                }
+                                else
+                                {
+                                    unavailable = true;
+                                }
+
+                                productRepository.AlterProduct(
+                                    product.Id,
+                                    name,
+                                    product.Url,
+                                    product.Store_Id,
+                                    product.Current_Price,
+                                    unavailable,
+                                    DateTime.Now,
+                                    product.Last_Captcha_Detected_At
+                                );
+
+                                if (name != null)
+                                {
+                                    string logMessage = $"O Produto de ID {product.Id} foi atualizado com o nome {name}";
+                                    await AddLogEntryAsync(LogType.ProductNameUpdate, logMessage);
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                UpdateExecutionLogError(product.Id, $"Erro no processo FillEmptyProductNames: {ex.Message}");
+                                await TakeScreenshot(page, $"Error_{product.Id}");
+                            }
                         }
                     }
-                }
-                finally
-                {
-                    await page.CloseAsync();
+                    finally
+                    {
+                        await page.CloseAsync();
+                    }
                 }
             }
-            await browser.CloseAsync();
-            await browser.DisposeAsync();
+            catch (Exception ex)
+            {
+                UpdateExecutionLogError(0, $"Erro no processo FillEmptyProductNames (geral): {ex.Message}");
+            }
+            finally
+            {
+                if (context != null)
+                    await context.CloseAsync();
+                if (browser != null)
+                {
+                    await browser.CloseAsync();
+                    await browser.DisposeAsync();
+                }
+                playwright?.Dispose();
+            }
         }
 
         public static async Task<string> GetFullUrlFromShortenedAmazonUrl(string shortenedUrl)
@@ -619,109 +660,134 @@ namespace Functions
             return false;
         }
 
-
         public static async Task UpdateProductPrices()
         {
-            var playwright = await Playwright.CreateAsync();
-            var browser = await playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions { Headless = true });
-            var context = await browser.NewContextAsync(new BrowserNewContextOptions
-            {
-                UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.4692.99 Safari/537.36"
-            });
+            IPlaywright playwright = null;
+            IBrowser browser = null;
+            IBrowserContext context = null;
 
-            await context.RouteAsync("**/*", async route =>
+            try
             {
-                var request = route.Request;
-                var url = request.Url;
-
-                if (url.EndsWith(".png") || url.EndsWith(".jpg") || url.EndsWith(".jpeg") || url.EndsWith(".gif") ||
-                    url.EndsWith(".woff") || url.EndsWith(".woff2") || url.EndsWith(".ttf") || url.EndsWith(".eot") ||
-                    url.EndsWith(".mp4") || url.EndsWith(".webm") || url.EndsWith(".ogg"))
+                playwright = await Playwright.CreateAsync();
+                browser = await playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions { Headless = true });
+                context = await browser.NewContextAsync(new BrowserNewContextOptions
                 {
-                    await route.AbortAsync();
-                    return;
-                }
-                await route.ContinueAsync();
-            });
-
-            using var dbcontext = new AppDbContext();
-            var productRepository = new ProductRepository(dbcontext);
-            var products = productRepository.GetProductsGroupedByStoreIdPendingPriceUpdate()
-                                            .SelectMany(g => g.Value)
-                                            .OrderBy(p => p.Last_Checked_Date)
-                                            .Take(10)
-                                            .ToList();
-
-            int totalProducts = products.Count;
-            int threads = 3;
-            int productsPerThread = totalProducts / threads;
-            int remainder = totalProducts % threads;
-
-            var tasks = new List<Task>();
-
-            for (int i = 0; i < threads; i++)
-            {
-                int start = i * productsPerThread;
-                int count = productsPerThread + (i == threads - 1 ? remainder : 0); // A última thread pega o restante
-
-                var productsSubset = products.Skip(start).Take(count).ToList();
-
-                var task = Task.Run(async () =>
-                {
-                    using var dbcontext = new AppDbContext();
-                    var productRepository = new ProductRepository(dbcontext);
-                    var page = await context.NewPageAsync();
-
-                    try
-                    {
-                        foreach (var product in productsSubset)
-                        {
-                            string url = product.Url;
-                            await page.GotoAsync(url);
-                            var functions = new Functions();
-                            bool captchaPresent = await functions.IsCaptchaPresent(page);
-                            Store store = (Store)product.Store_Id;
-                            if (!captchaPresent)
-                            {
-                                double? price = await GetProductPrice(page, url, store);
-                                bool unavailable = price == null;
-                                DateTime? last_Captcha_Detected_At = product.Last_Captcha_Detected_At;
-                                productRepository.AlterProduct(product.Id, product.Name, product.Url, product.Store_Id, price, unavailable, DateTime.Now, last_Captcha_Detected_At);
-
-                                if (price != null)
-                                {
-                                    string logMessage = $"O Produto de ID {product.Id} foi atualizado com o preço {price}";
-                                    await AddLogEntryAsync(LogType.ProductPriceUpdate, logMessage);
-                                }
-                                else
-                                {
-                                    await TakeScreenshot(page, product.Name.ToString());
-                                }
-                            }
-
-                            else
-                            {                                
-                                double? price = product.Current_Price;
-                                bool unavailable = false;
-                                productRepository.AlterProduct(product.Id, product.Name, product.Url, product.Store_Id, price, unavailable, product.Last_Checked_Date, DateTime.Now);
-                                
-                            }
-
-                        }
-                    }
-                    finally
-                    {
-                        await page.CloseAsync();
-                    }
+                    UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.4692.99 Safari/537.36"
                 });
 
-                tasks.Add(task);
+                await context.RouteAsync("**/*", async route =>
+                {
+                    var url = route.Request.Url;
+
+                    if (url.EndsWith(".png") || url.EndsWith(".jpg") || url.EndsWith(".jpeg") || url.EndsWith(".gif") ||
+                        url.EndsWith(".woff") || url.EndsWith(".woff2") || url.EndsWith(".ttf") || url.EndsWith(".eot") ||
+                        url.EndsWith(".mp4") || url.EndsWith(".webm") || url.EndsWith(".ogg"))
+                    {
+                        await route.AbortAsync();
+                        return;
+                    }
+                    await route.ContinueAsync();
+                });
+
+                using var dbcontext = new AppDbContext();
+                var productRepository = new ProductRepository(dbcontext);
+
+                var products = productRepository.GetProductsGroupedByStoreIdPendingPriceUpdate()
+                                                .SelectMany(g => g.Value)
+                                                .OrderBy(p => p.Last_Checked_Date)
+                                                .Take(20)
+                                                .ToList();
+
+                int totalProducts = products.Count;
+                int threads = 3;
+                int productsPerThread = totalProducts / threads;
+                int remainder = totalProducts % threads;
+
+                var tasks = new List<Task>();
+
+                for (int i = 0; i < threads; i++)
+                {
+                    int start = i * productsPerThread;
+                    int count = productsPerThread + (i == threads - 1 ? remainder : 0);
+
+                    var productsSubset = products.Skip(start).Take(count).ToList();
+
+                    var task = Task.Run(async () =>
+                    {
+                        using var dbcontext = new AppDbContext();
+                        var productRepository = new ProductRepository(dbcontext);
+                        var page = await context.NewPageAsync();
+
+                        try
+                        {
+                            foreach (var product in productsSubset)
+                            {
+                                try
+                                {
+                                    string url = product.Url;
+                                    await page.GotoAsync(url);
+                                    var functions = new Functions();
+                                    bool captchaPresent = await functions.IsCaptchaPresent(page);
+                                    Store store = (Store)product.Store_Id;
+
+                                    if (!captchaPresent)
+                                    {
+                                        double? price = await GetProductPrice(page, url, store);
+                                        bool unavailable = price == null;
+                                        DateTime? last_Captcha_Detected_At = product.Last_Captcha_Detected_At;
+
+                                        productRepository.AlterProduct(product.Id, product.Name, product.Url, product.Store_Id, price, unavailable, DateTime.Now, last_Captcha_Detected_At);
+
+                                        if (price != null)
+                                        {
+                                            string logMessage = $"O Produto de ID {product.Id} foi atualizado com o preço {price}";
+                                            await AddLogEntryAsync(LogType.ProductPriceUpdate, logMessage);
+                                        }
+                                        else
+                                        {
+                                            await TakeScreenshot(page, product.Name.ToString());
+                                        }
+                                    }
+                                    else
+                                    {
+                                        double? price = product.Current_Price;
+                                        bool unavailable = false;
+                                        productRepository.AlterProduct(product.Id, product.Name, product.Url, product.Store_Id, price, unavailable, product.Last_Checked_Date, DateTime.Now);
+                                    }
+                                }
+                                catch (Exception ex)
+                                {
+                                    UpdateExecutionLogError(product.Id, $"Erro no processo UpdateProductPrices: {ex.Message}");
+                                    await TakeScreenshot(page, $"Error_{product.Name}");
+                                }
+                            }
+                        }
+                        finally
+                        {
+                            await page.CloseAsync();
+                        }
+                    });
+
+                    tasks.Add(task);
+                }
+
+                await Task.WhenAll(tasks);
             }
-
-            await Task.WhenAll(tasks);
-
-            await browser.CloseAsync();
-            await browser.DisposeAsync();
+            catch (Exception ex)
+            {
+                UpdateExecutionLogError(0, $"Erro no processo UpdateProductPrices (geral): {ex.Message}");
+            }
+            finally
+            {
+                if (context != null)
+                    await context.CloseAsync();
+                if (browser != null)
+                {
+                    await browser.CloseAsync();
+                    await browser.DisposeAsync();
+                }
+                playwright?.Dispose();
+            }
         }
 
         public static async Task CheckAndNotifyUsersAsync()
@@ -746,7 +812,6 @@ namespace Functions
 
                     if (!userProduct.Last_notification.HasValue || userProduct.Last_notification < DateTime.Now.AddHours(-24))
                     {
-
                         var subject = $"Alerta de preço: Produto {item.Product.Name} abaixo de R${item.User_Product.Price}";
                         var body = $"O produto {item.Product.Name} na URL <a href='{item.Product.Url}' target='_blank'>{item.Product.Url}</a> está com um preço de R${item.Product.Current_Price}.";
                         string? erroEnvioEmail = await SendEmail(subject, body, item.User.Id);
@@ -757,7 +822,6 @@ namespace Functions
                             logMessage = $"Email enviado referente ao produto {item.Product.Name} foi enviado para o e-mail {item.User.Email}";
                             await AddLogEntryAsync(LogType.EmailSent, logMessage);
                         }
-
                         else
                         {
                             await AddLogEntryAsync(LogType.EmailSent, $"Erro ao enviar e-mail para o e-mail {item.User.Email.ToString()}" + erroEnvioEmail.ToString());
@@ -887,6 +951,7 @@ namespace Functions
                 }
             }
         }
+
         public static void UpdateExecutionLogError(int id, string errorMessage)
         {
             using (var context = new AppDbContext())
@@ -904,7 +969,7 @@ namespace Functions
             }
         }
 
-        public async static Task ExpandAndSaveShortenedUrls()
+        public static async Task ExpandAndSaveShortenedUrls()
         {
             using var dbcontext = new AppDbContext();
             var productRepository = new ProductRepository(dbcontext);
@@ -934,7 +999,6 @@ namespace Functions
                             }
                         }
                     }
-
                     finally
                     {
                         await context.CloseAsync();
@@ -948,7 +1012,7 @@ namespace Functions
         {
             try
             {
-                foreach (var process in Process.GetProcessesByName("chromium"))
+                foreach (var process in Process.GetProcessesByName("headless_shell"))
                 {
                     process.Kill();
                 }
@@ -980,7 +1044,6 @@ namespace Functions
 
         private static void RestartApplication()
         {
-
             using (var context = new AppDbContext())
             {
                 var log = new ExecutionLog
@@ -1041,6 +1104,3 @@ namespace Functions
         }
     }
 }
-
-
-

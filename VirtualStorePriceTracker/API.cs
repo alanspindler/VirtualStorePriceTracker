@@ -1,8 +1,8 @@
-﻿using RestSharp;
+﻿using Database;
 using Newtonsoft.Json;
+using RestSharp;
 using System.Security.Cryptography;
 using System.Text;
-using Database;
 
 namespace API
 {
@@ -28,6 +28,7 @@ namespace API
     public class TokenService
     {
         private AppDbContext _context;
+
         public static string GetDecryptedAccessToken()
         {
             var _context = new AppDbContext();
@@ -201,5 +202,3 @@ namespace API
         }
     }
 }
-
-

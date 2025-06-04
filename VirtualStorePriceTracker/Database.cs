@@ -1,6 +1,6 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using Microsoft.EntityFrameworkCore;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using Microsoft.EntityFrameworkCore;
 
 namespace Database
 {
@@ -41,6 +41,7 @@ namespace Database
 
         [ForeignKey("Product")]
         public int Product_id { get; set; }
+
         public User User { get; set; }
         public Product Product { get; set; }
     }
@@ -69,6 +70,7 @@ namespace Database
 
         [ForeignKey("LogTypeId")]
         public int LogTypeId { get; set; }
+
         public string Description { get; set; }
         public DateTime DateTime { get; set; }
     }
@@ -90,7 +92,6 @@ namespace Database
         public DateTime Date { get; set; }
     }
 
-
     public class LoggingService
     {
         private readonly AppDbContext _context;
@@ -100,6 +101,7 @@ namespace Database
             _context = context;
         }
     }
+
     public class AppDbContext : DbContext
     {
         public DbSet<Product> Product { get; set; }
@@ -142,7 +144,7 @@ namespace Database
             _context.SaveChanges();
         }
 
-        public void AlterProduct(int id, string newName, string NewUrl, int NewStore_Id, double? NewCurrent_Price, bool NewUnavailable, DateTime? NewLast_Checked_Date, DateTime? NewLast_Captcha_Presente )
+        public void AlterProduct(int id, string newName, string NewUrl, int NewStore_Id, double? NewCurrent_Price, bool NewUnavailable, DateTime? NewLast_Checked_Date, DateTime? NewLast_Captcha_Presente)
         {
             var product = _context.Product.FirstOrDefault(p => p.Id == id);
             if (product != null)
@@ -186,7 +188,6 @@ namespace Database
 
             return productsPendingPriceUpdate;
         }
-
 
         public List<string> GetShortenedAmazonUrls()
         {
